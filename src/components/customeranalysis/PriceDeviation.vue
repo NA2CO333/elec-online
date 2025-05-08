@@ -1141,11 +1141,6 @@ function handleCorrelationChartsResize() {
   border-bottom: 1px solid #ebeef5;
 }
 
-/* 关联分析模块样式 */
-.correlation-analysis-section {
-  /* margin-top: 16px; */ /* 已在 analysis-card 中处理间距 */
-}
-
 .dual-scatter-container {
   display: flex;
   gap: 16px;
