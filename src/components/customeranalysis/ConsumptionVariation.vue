@@ -296,117 +296,40 @@
           </div>
         </div>
         
-        <!-- 周期之间电量分时曲线对比 -->
-        <div class="analysis-card">
+        <!-- 电量变化折线图 -->
+        <div class="analysis-card" style="flex: 2; min-height: 650px;">
           <div class="card-header">
-            <h3>周期之间电量分时曲线对比</h3>
-          </div>
-          
-          <!-- 图表控制选项 -->
-          <div class="chart-controls">
-            <div class="chart-control-group">
-              <span class="control-label">显示对比组：</span>
-              <el-checkbox-group v-model="visibleCompareGroups" @change="updateHourlyConsumptionChart">
-                <el-checkbox 
-                  v-for="(group, index) in compareGroups" 
-                  :key="index" 
-                  :label="index" 
-                  :disabled="!group.enabled"
-                >
-                  对比组 {{ index + 1 }}
-                </el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <div class="chart-control-group">
-              <span class="control-label">数据类型：</span>
-              <el-radio-group v-model="periodVisibility" @change="updateHourlyConsumptionChart">
-                <el-radio label="both">全部</el-radio>
-                <el-radio label="current">仅现在周期</el-radio>
-                <el-radio label="previous">仅从前周期</el-radio>
+            <h3>电量变化折线图</h3>
+            <div class="card-tools">
+              <el-button 
+                type="primary" 
+                size="small"
+                plain
+                @click="openDimensionSelectorModal"
+              >
+                维度选择器
+              </el-button>
+              <el-radio-group v-model="comparisonType" size="small" @change="updateElectricityVariationChart">
+                <el-radio-button label="amount">电量</el-radio-button>
+                <el-radio-button label="percentage">比例</el-radio-button>
               </el-radio-group>
             </div>
           </div>
-          
-          <div class="chart-container">
-            <div id="hourlyConsumptionChart" class="chart"></div>
+          <div class="chart-container" style="height: calc(100% - 60px);">
+            <div id="electricityVariationChart" class="chart"></div>
           </div>
         </div>
       </div>
       
       <!-- 辅助分析区域 -->
       <div class="secondary-analysis-area">
-        <!-- 维度分布卡片 -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>维度分布</h3>
-            <div class="card-tools">
-              <el-dropdown>
-                <el-button size="small">
-                  切换维度
-                  <el-icon><arrow-down /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="changeDimensionView('userLevel')">用户分级</el-dropdown-item>
-                    <el-dropdown-item @click="changeDimensionView('industry')">行业</el-dropdown-item>
-                    <el-dropdown-item @click="changeDimensionView('region')">地区</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-          <div class="chart-container">
-            <div id="dimensionDistributionChart" class="chart"></div>
-          </div>
-        </div>
-        
-        <!-- 异常用户卡片 -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>异常用户</h3>
-            <div class="card-tools">
-              <el-tooltip content="导出表格">
-                <el-button size="small" circle>
-                  <el-icon><Download /></el-icon>
-                </el-button>
-              </el-tooltip>
-            </div>
-          </div>
-          <div class="table-container">
-            <el-table :data="abnormalUsersData" style="width: 100%" height="200" border>
-              <el-table-column prop="userId" label="用户ID" width="80" />
-              <el-table-column prop="userName" label="用户名称" width="120" />
-              <el-table-column prop="changeRate" label="变化率(%)" width="100" />
-              <el-table-column prop="abnormalReason" label="异常原因" />
-            </el-table>
-          </div>
-        </div>
-        
-        <!-- 气象因素影响卡片 -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>气象因素影响</h3>
-            <div class="card-tools">
-              <el-dropdown>
-                <el-button size="small">
-                  气象因素
-                  <el-icon><arrow-down /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="changeWeatherFactor('temperature')">温度</el-dropdown-item>
-                    <el-dropdown-item @click="changeWeatherFactor('precipitation')">降水</el-dropdown-item>
-                    <el-dropdown-item @click="changeWeatherFactor('humidity')">湿度</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-          <div class="chart-container">
-            <div id="weatherFactorChart" class="chart"></div>
-          </div>
-        </div>
+        <!-- 替换原有的维度分布卡片为TOP N用户排序组件 -->
+        <TopNUsers 
+          :max-items="10" 
+          :external-user-data="userConsumptionData" 
+          :use-external-data="true"
+          @comparison-change="handleUserComparisonChange"
+        />
       </div>
     </div>
 
@@ -589,6 +512,106 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 维度选择器浮窗 -->
+    <el-dialog
+      title="维度选择"
+      v-model="dimensionSelectorVisible"
+      width="60%"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div class="dimension-selector-container">
+        <!-- 提示信息 -->
+        <div class="dimension-selector-tip">
+          <p>①点击维度选择器，打开浮窗。默认勾选了所有维度、所有分类</p>
+          <p>②取消勾选不希望汇总的分类，如"节" "调"</p>
+        </div>
+        
+        <!-- 维度选择区域 -->
+        <div class="dimension-selection-area">
+          <!-- 日类型维度 -->
+          <div class="dimension-group">
+            <div class="dimension-group-title">日类型</div>
+            <div class="dimension-options">
+              <el-checkbox-group v-model="selectedDayTypes">
+                <el-checkbox v-for="option in ['工', '六', '日', '一', '节', '调']" :key="option" :label="option">
+                  {{ option }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+          </div>
+          
+          <!-- 用户等级维度 -->
+          <div class="dimension-group">
+            <div class="dimension-group-title">用户等级</div>
+            <div class="dimension-options">
+              <el-checkbox-group v-model="selectedUserLevels">
+                <el-checkbox v-for="option in ['大型用户', '中型用户', '小型用户', '微型用户']" :key="option" :label="option">
+                  {{ option }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+          </div>
+          
+          <!-- 行业维度 -->
+          <div class="dimension-group">
+            <div class="dimension-group-title">行业</div>
+            <div class="dimension-options">
+              <el-checkbox-group v-model="selectedIndustries">
+                <el-checkbox v-for="option in ['制造业', '金属开采业', '住宿业']" :key="option" :label="option">
+                  {{ option }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+          </div>
+          
+          <!-- 地区维度 -->
+          <div class="dimension-group">
+            <div class="dimension-group-title">地区</div>
+            <div class="dimension-options">
+              <el-checkbox-group v-model="selectedRegions">
+                <el-checkbox v-for="option in ['深圳', '广州', '东莞', '佛山']" :key="option" :label="option">
+                  {{ option }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+          </div>
+          
+          <!-- 用户组维度 -->
+          <div class="dimension-group">
+            <div class="dimension-group-title">用户组</div>
+            <div class="dimension-options">
+              <el-checkbox-group v-model="selectedUserGroupOptions">
+                <el-checkbox label="全部">全部</el-checkbox>
+                <el-checkbox 
+                  v-for="group in customUserGroups" 
+                  :key="group.id" 
+                  :label="group.name"
+                >
+                  {{ group.name }}
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+            
+            <!-- 新增用户组按钮 -->
+            <div class="add-user-group-btn">
+              <el-button type="primary" size="small" @click="showDimensionUserGroupDialog">
+                新增用户组
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelModalDimensionSelection">取消</el-button>
+          <el-button @click="resetDimensionSelection">重置</el-button>
+          <el-button type="primary" @click="applyDimensionSelection">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -598,6 +621,7 @@ import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 import { ArrowDown, Download, View, Close, Delete, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import TopNUsers from './TopNUsers.vue' // 导入新创建的TOP N用户排序组件
 
 // 维度选择数据
 interface DimensionOptions {
@@ -786,6 +810,9 @@ function addPastPeriod() {
       weeksToCompare: 1 // 默认对比前1周
     });
     
+    // 更新电量变化数据
+    updateElectricityVariationData();
+    
     // 提示用户
     ElMessage.success(`已添加过去周期 ${newId}`);
   } else {
@@ -883,7 +910,7 @@ function reloadData() {
   // 这里模拟API调用
   setTimeout(() => {
     // 为每个比较组生成模拟数据
-    const newData = comparisonGroups.value.map((group, index) => {
+    const newData = comparisonGroups.value.map((group: any, index: number) => {
       // 生成7天的随机数据
       const dailyData: any[] = [];
       const startDate = new Date(group.dateRange[0]);
@@ -910,8 +937,99 @@ function reloadData() {
     
     // 更新比较数据
     comparisonData.value = newData;
+    
+    // 更新电量变化数据
+    updateElectricityVariationData();
+    
     loadingComparison.value = false;
   }, 1000);
+}
+
+// 更新电量变化数据
+function updateElectricityVariationData(): void {
+  // 根据当前选择的周期更新电量变化数据
+  const newVariationData: ElectricityVariationData[] = [];
+  
+  // 添加"现在"周期数据
+  newVariationData.push({
+    periodLabel: "现在",
+    color: "#34a853",
+    hourlyData: generateRandomHourlyData(1.0, true) // 基准电量，考虑维度选择
+  });
+  
+  // 添加"过去1"周期数据
+  newVariationData.push({
+    periodLabel: "过去1",
+    color: "#4285f4",
+    hourlyData: generateRandomHourlyData(0.9, true) // 稍低于现在，考虑维度选择
+  });
+  
+  // 添加"过去2"周期数据
+  newVariationData.push({
+    periodLabel: "过去2",
+    color: "#fbbc05",
+    hourlyData: generateRandomHourlyData(0.85) // 更低
+  });
+  
+  // 添加"过去3"周期数据（如果有）
+  if (pastPeriods.value.length >= 3) {
+    newVariationData.push({
+      periodLabel: "过去3",
+      color: "#ea4335",
+      hourlyData: generateRandomHourlyData(0.8) // 最低
+    });
+  }
+  
+  // 更新数据
+  electricityVariationData.value = newVariationData;
+  
+  // 更新图表
+  nextTick(() => {
+    updateElectricityVariationChart();
+  });
+}
+
+// 生成随机的24小时电量数据
+function generateRandomHourlyData(factor: number, considerDimensions: boolean = false): number[] {
+  // 基础曲线模式 (基于一天中不同时段的典型用电曲线)
+  const basePattern: number[] = [
+    // 凌晨低谷 (0-7点)
+    25, 22, 20, 19, 20, 24, 30, 45,
+    // 白天 (8-17点)
+    60, 72.5, 81, 87.5, 85, 82.5, 86, 90, 87.5, 75,
+    // 晚高峰 (18-23点)
+    77.5, 80, 72.5, 60, 45, 32.5
+  ];
+  
+  // 如果需要考虑维度选择
+  if (considerDimensions) {
+    // 应用维度选择的影响因子
+    // 这里只是一个简单的模拟，实际应用中应该根据真实数据进行计算
+    let dimensionFactor = 1.0;
+    
+    // 根据选择的日类型调整因子
+    const dayTypeFactor = 1 - (0.05 * (6 - selectedDayTypes.value.length));
+    
+    // 根据选择的用户等级调整因子
+    const userLevelFactor = 1 - (0.05 * (4 - selectedUserLevels.value.length));
+    
+    // 根据选择的行业调整因子
+    const industryFactor = 1 - (0.05 * (3 - selectedIndustries.value.length));
+    
+    // 根据选择的地区调整因子
+    const regionFactor = 1 - (0.05 * (4 - selectedRegions.value.length));
+    
+    // 组合所有因子
+    dimensionFactor = dayTypeFactor * userLevelFactor * industryFactor * regionFactor;
+    
+    // 应用维度因子
+    factor *= dimensionFactor;
+  }
+  
+  // 添加随机波动并应用因子
+  return basePattern.map(v => 
+    Number((v * factor * (1 + (Math.random() * 0.1 - 0.05))).toFixed(1))
+  );
 }
 
 // 初始化比较组
@@ -949,6 +1067,27 @@ onMounted(() => {
     pastPeriods.value[0].dateRange = getLastWeekRange();
   }
   
+  // 确保电量变化数据包含所有需要的折线
+  if (electricityVariationData.value.length < 3) {
+    electricityVariationData.value = [
+      {
+        periodLabel: "现在",
+        color: "#34a853",
+        hourlyData: generateRandomHourlyData(1.0)
+      },
+      {
+        periodLabel: "过去1",
+        color: "#4285f4",
+        hourlyData: generateRandomHourlyData(0.9)
+      },
+      {
+        periodLabel: "过去2",
+        color: "#fbbc05",
+        hourlyData: generateRandomHourlyData(0.85)
+      }
+    ];
+  }
+  
   // 初始化加载对比数据
   reloadData();
   
@@ -966,7 +1105,8 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   // 销毁图表实例，避免内存泄漏
   hourlyConsumptionChart.value?.dispose();
-  dimensionDistributionChart.value?.dispose();
+  electricityVariationChart.value?.dispose();
+  // 移除维度分布图表的dispose调用
   weatherFactorChart.value?.dispose();
   
   // 移除全局点击事件监听
@@ -1077,6 +1217,13 @@ interface HourlyConsumptionData {
   groupIndex: number;
   periodType: 'current' | 'previous';
   data: number[];
+}
+
+// 电量变化模块的数据模型
+interface ElectricityVariationData {
+  periodLabel: string;
+  color: string;
+  hourlyData: number[];
 }
 
 // 分时电量数据
@@ -1224,9 +1371,22 @@ const userGroupForm = reactive({
 const userOptions = ref<Array<{ id: number; name: string }>>([])
 const userSearchLoading = ref(false)
 
+// 维度选择器浮窗控制变量
+const dimensionSelectorVisible = ref(false)
+const selectedDayTypes = ref<string[]>(['工', '六', '日', '一', '节', '调'])
+const selectedUserLevels = ref<string[]>(['大型用户', '中型用户', '小型用户', '微型用户'])
+const selectedIndustries = ref<string[]>(['制造业', '金属开采业', '住宿业'])
+const selectedRegions = ref<string[]>(['深圳', '广州', '东莞', '佛山'])
+const selectedUserGroupOptions = ref<string[]>(['全部'])
+const customUserGroups = ref<Array<{
+  id: number,
+  name: string,
+  companies: Array<{ id: number, name: string }>
+}>>([])
+
 // 图表实例引用
 const hourlyConsumptionChart = ref<echarts.ECharts | null>(null)
-const dimensionDistributionChart = ref<echarts.ECharts | null>(null)
+// 移除维度分布图表引用
 const weatherFactorChart = ref<echarts.ECharts | null>(null)
 
 // 透视表引用
@@ -1255,7 +1415,7 @@ const abnormalUsersData = ref<Array<{
 }>>([])
 
 // 当前选择的维度和气象因素
-const currentDimension = ref('userLevel')
+// const currentDimension = ref('userLevel')
 const currentWeatherFactor = ref('temperature')
 
 // 格式化数字
@@ -1476,12 +1636,6 @@ function saveUserGroup() {
   selectedUserDimensions.value.push(`userGroup-${newGroup.id}`)
 }
 
-// 维度视图切换
-function changeDimensionView(dimension: string) {
-  currentDimension.value = dimension
-  updateDimensionDistributionChart()
-}
-
 // 气象因素切换
 function changeWeatherFactor(factor: string) {
   currentWeatherFactor.value = factor
@@ -1497,12 +1651,23 @@ function initCharts() {
     updateHourlyConsumptionChart()
   }
   
-  // 初始化维度分布图表
-  const dimensionChartDom = document.getElementById('dimensionDistributionChart')
-  if (dimensionChartDom) {
-    dimensionDistributionChart.value = echarts.init(dimensionChartDom)
-    updateDimensionDistributionChart()
+  // 初始化电量变化图表
+  const electricityVariationChartDom = document.getElementById('electricityVariationChart')
+  if (electricityVariationChartDom) {
+    // 确保容器有正确的高度
+    electricityVariationChartDom.style.height = '100%';
+    electricityVariationChartDom.style.minHeight = '600px';
+    
+    // 初始化图表
+    electricityVariationChart.value = echarts.init(electricityVariationChartDom)
+    
+    // 更新图表
+    nextTick(() => {
+      updateElectricityVariationChart()
+    })
   }
+  
+  // 移除初始化维度分布图表的代码
   
   // 初始化气象因素影响图表
   const weatherChartDom = document.getElementById('weatherFactorChart')
@@ -1517,9 +1682,24 @@ function initCharts() {
 
 // 处理窗口大小变化
 function handleResize() {
-  hourlyConsumptionChart.value?.resize()
-  dimensionDistributionChart.value?.resize()
-  weatherFactorChart.value?.resize()
+  // 重新调整图表大小
+  if (hourlyConsumptionChart.value) {
+    hourlyConsumptionChart.value.resize();
+  }
+  
+  // 重新调整电量变化图表大小并重新渲染
+  if (electricityVariationChart.value) {
+    electricityVariationChart.value.resize();
+    // 延迟一点时间，确保容器已经调整完毕
+    setTimeout(() => {
+      updateElectricityVariationChart();
+    }, 100);
+  }
+  
+  // 重新调整其他图表大小
+  if (weatherFactorChart.value) {
+    weatherFactorChart.value.resize();
+  }
 }
 
 // 更新周期之间电量分时曲线对比图表
@@ -1629,11 +1809,12 @@ function updateHourlyConsumptionChart() {
       bottom: 10
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '15%',
-      containLabel: true
+      left: '5%',
+      right: '5%',
+      bottom: '10%',
+      top: '2%',
+      containLabel: true,
+      height: '85%' // 添加height属性，使图表占据容器的85%高度
     },
     toolbox: {
       feature: {
@@ -1746,89 +1927,6 @@ function generateHourlyConsumptionData() {
   });
   
   hourlyConsumptionData.value = data;
-}
-
-// 更新维度分布图表
-function updateDimensionDistributionChart() {
-  if (!dimensionDistributionChart.value) return
-  
-  let data: any[] = []
-  let title = ''
-  
-  // 根据当前选择的维度提供不同数据
-  switch(currentDimension.value) {
-    case 'userLevel':
-      title = '用户分级分布'
-      data = [
-        { value: 40, name: '大用户' },
-        { value: 25, name: '中型用户' },
-        { value: 15, name: '小型用户' },
-        { value: 20, name: '微型用户' }
-      ]
-      break
-    case 'industry':
-      title = '行业分布'
-      data = [
-        { value: 30, name: '工业' },
-        { value: 15, name: '商业' },
-        { value: 25, name: '农业' },
-        { value: 20, name: '服务业' },
-        { value: 10, name: '其他' }
-      ]
-      break
-    case 'region':
-      title = '地区分布'
-      data = [
-        { value: 20, name: '城区' },
-        { value: 25, name: '郊区' },
-        { value: 30, name: '工业园区' },
-        { value: 25, name: '农村地区' }
-      ]
-      break
-  }
-  
-  const option = {
-    title: {
-      text: title,
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      right: 10,
-      top: 'center',
-      data: data.map(item => item.name)
-    },
-    series: [
-      {
-        name: currentDimension.value === 'userLevel' ? '用户分级' : 
-              currentDimension.value === 'industry' ? '行业' : '地区',
-        type: 'pie',
-        radius: ['50%', '70%'],
-        avoidLabelOverlap: false,
-        label: {
-          show: false,
-          position: 'center'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 16,
-            fontWeight: 'bold'
-          }
-        },
-        labelLine: {
-          show: false
-        },
-        data: data
-      }
-    ]
-  }
-  
-  dimensionDistributionChart.value.setOption(option)
 }
 
 // 更新气象因素影响图表
@@ -2201,11 +2299,12 @@ function formatDimensionDisplay(values: string[]): string {
 // 打开维度选择器
 function openDimensionSelector(row: TableRowData, dimension: keyof DimensionOptions) {
   // 阻止事件冒泡，防止立即触发handleClickOutside
-  event?.stopPropagation();
+  const evt = event as Event;
+  evt?.stopPropagation();
   
   // 获取点击元素的位置信息
-  const target = event?.target as HTMLElement
-  const rect = target.getBoundingClientRect()
+  const target = evt?.target as HTMLElement;
+  const rect = target.getBoundingClientRect();
   
   // 设置当前选中的行和维度类型
   currentDimensionSelector.value = {
@@ -2300,6 +2399,12 @@ function getDimensionOptions(dimension: keyof DimensionOptions | null): string[]
 // 删除对比行
 function removeComparisonRow(index: number) {
   pivotTableData.value.splice(index, 1);
+  
+  // 如果删除的是过去周期，更新电量变化图表
+  if (pastPeriods.value.length > 0) {
+    updateElectricityVariationData();
+  }
+  
   ElMessage.success('已删除对比行');
 }
 
@@ -2375,6 +2480,18 @@ function confirmAddUserGroup() {
   // 添加到维度选项中
   dimensionOptions.userGroup.push(groupName);
   
+  // 添加到自定义用户组列表
+  customUserGroups.value.push({
+    id: Date.now(),
+    name: groupName,
+    companies: [...userGroupForm.selectedCompanies]
+  });
+  
+  // 自动选中新创建的用户组
+  if (!selectedUserGroupOptions.value.includes(groupName)) {
+    selectedUserGroupOptions.value.push(groupName);
+  }
+  
   // 关闭对话框
   userGroupDialogVisible.value = false;
   
@@ -2385,6 +2502,284 @@ function confirmAddUserGroup() {
 // 用户组相关变量
 const companySearchKeyword = ref('')
 const searchResults = ref<Array<{ id: number, name: string }>>([])
+
+// 电量变化模块数据
+const electricityVariationData = ref<ElectricityVariationData[]>([
+  {
+    periodLabel: "现在",
+    color: "#34a853",
+    hourlyData: [
+      27.0, 27.8, 26.5, 25.0, 26.8, 26.5, 24.3, 26.0, 30.5, 32.8, 32.5, 29.0,
+      27.0, 30.0, 30.8, 32.3, 33.5, 30.0, 30.5, 29.8, 28.5, 27.0, 26.0, 24.9
+    ]
+  },
+  {
+    periodLabel: "过去1",
+    color: "#4285f4",
+    hourlyData: [
+      25.0, 24.5, 23.8, 23.0, 24.2, 24.0, 22.5, 24.8, 28.5, 30.2, 30.0, 27.5,
+      25.5, 28.0, 28.5, 30.0, 31.0, 28.5, 29.0, 28.0, 26.5, 25.0, 24.5, 23.0
+    ]
+  },
+  {
+    periodLabel: "过去2",
+    color: "#fbbc05",
+    hourlyData: [
+      23.0, 22.5, 22.0, 21.5, 22.0, 22.5, 21.0, 23.0, 26.0, 28.0, 28.5, 26.0,
+      24.0, 26.5, 27.0, 28.5, 29.0, 27.0, 27.5, 26.5, 25.0, 24.0, 23.0, 22.0
+    ]
+  }
+])
+
+// 电量变化模块对比类型
+const comparisonType = ref<'amount' | 'percentage'>('amount')
+
+// 电量变化图表实例
+const electricityVariationChart = ref<echarts.ECharts | null>(null)
+
+// 更新电量变化图表
+function updateElectricityVariationChart() {
+  if (!electricityVariationChart.value) return;
+  
+  // 准备图表数据
+  const series: any[] = [];
+  const legendData: string[] = [];
+  
+  // 计算每个周期的总电量（用于计算百分比）
+  const totalConsumptions = electricityVariationData.value.map(period => 
+    period.hourlyData.reduce((sum, value) => sum + value, 0)
+  );
+  
+  // 为每个周期创建数据系列
+  electricityVariationData.value.forEach((period, index) => {
+    const seriesName = period.periodLabel;
+    legendData.push(seriesName);
+    
+    // 根据对比类型处理数据
+    let processedData;
+    if (comparisonType.value === 'amount') {
+      // 电量模式：直接使用原始数据
+      processedData = period.hourlyData;
+    } else {
+      // 比例模式：计算每小时电量占总电量的百分比
+      const totalConsumption = totalConsumptions[index];
+      processedData = period.hourlyData.map(value => 
+        totalConsumption > 0 ? (value / totalConsumption) : 0
+      );
+    }
+    
+    // 添加数据系列
+    series.push({
+      name: seriesName,
+      type: 'line',
+      smooth: true,
+      data: processedData,
+      lineStyle: {
+        width: 2,
+        color: period.color
+      },
+      itemStyle: {
+        color: period.color
+      },
+      symbol: 'circle',
+      symbolSize: 8,
+      // 确保数据点始终可见
+      showSymbol: true,
+      // 鼠标悬停时突出显示
+      emphasis: {
+        scale: true,
+        focus: 'series',
+        itemStyle: {
+          borderWidth: 2,
+          borderColor: '#fff',
+          shadowBlur: 10,
+          shadowColor: period.color
+        }
+      }
+    });
+  });
+  
+  // 设置Y轴单位和名称
+  const yAxisName = comparisonType.value === 'amount' ? '电量 (MWh)' : '比例 (%)';
+  const yAxisFormatter = comparisonType.value === 'amount' 
+    ? '{value} MWh' 
+    : (value: number) => `${(value * 100).toFixed(2)}%`;
+  
+  // 设置图表选项
+  const option = {
+    title: {
+      text: '电量变化折线图',
+      left: 'center',
+      show: false // 隐藏标题，因为已经在卡片标题中显示
+    },
+    tooltip: {
+      show: true,
+      trigger: 'axis',
+      formatter: function(params: any[]) {
+        let result = `<div style="font-weight:bold;margin-bottom:5px;font-size:14px">${params[0].axisValue}时</div>`;
+        params.forEach(param => {
+          const value = param.value;
+          const formattedValue = comparisonType.value === 'amount' 
+            ? `${value.toFixed(2)} MWh` 
+            : `${(value * 100).toFixed(2)}%`;
+          
+          result += `<div style="display:flex;align-items:center;margin:8px 0;font-size:13px">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${param.color};margin-right:8px"></span>
+            <span style="margin-right:15px;color:#666">${param.seriesName}:</span>
+            <span style="font-weight:bold">${formattedValue}</span>
+          </div>`;
+        });
+        return result;
+      },
+      axisPointer: {
+        type: 'cross',
+        label: {
+          backgroundColor: '#6a7985'
+        }
+      },
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderWidth: 1,
+      borderColor: '#ddd',
+      padding: [10, 15],
+      textStyle: {
+        color: '#333'
+      },
+      extraCssText: 'box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);'
+    },
+    legend: {
+      data: legendData,
+      bottom: 10,
+      icon: 'circle',
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: {
+        fontSize: 12
+      }
+    },
+    grid: {
+      left: '5%',
+      right: '5%',
+      bottom: '10%',
+      top: '2%',
+      containLabel: true,
+      height: '85%' // 添加height属性，使图表占据容器的85%高度
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: Array.from({ length: 24 }, (_, i) => i.toString()),
+      axisLabel: {
+        formatter: '{value}时',
+        fontSize: 12
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: yAxisName,
+      nameTextStyle: {
+        padding: [0, 0, 0, 5],
+        fontSize: 12
+      },
+      axisLine: {
+        show: true
+      },
+      axisLabel: {
+        formatter: yAxisFormatter,
+        fontSize: 12
+      }
+    },
+    series: series
+  };
+  
+  electricityVariationChart.value.setOption(option, true);
+}
+
+// 维度选择器相关函数
+function openDimensionSelectorModal() {
+  // 打开维度选择器浮窗
+  dimensionSelectorVisible.value = true
+}
+
+function cancelModalDimensionSelection() {
+  // 关闭维度选择器浮窗，不保存更改
+  dimensionSelectorVisible.value = false
+}
+
+function resetDimensionSelection() {
+  // 重置所有维度选择为默认值
+  selectedDayTypes.value = ['工', '六', '日', '一', '节', '调']
+  selectedUserLevels.value = ['大型用户', '中型用户', '小型用户', '微型用户']
+  selectedIndustries.value = ['制造业', '金属开采业', '住宿业']
+  selectedRegions.value = ['深圳', '广州', '东莞', '佛山']
+  selectedUserGroupOptions.value = ['全部']
+}
+
+function applyDimensionSelection() {
+  // 应用维度选择，更新图表数据
+  const selectedDimensions = {
+    dayTypes: [...selectedDayTypes.value],
+    userLevels: [...selectedUserLevels.value],
+    industries: [...selectedIndustries.value],
+    regions: [...selectedRegions.value],
+    userGroups: [...selectedUserGroupOptions.value]
+  }
+  
+  console.log('应用维度选择:', selectedDimensions)
+  
+  // 更新图表数据
+  updateElectricityVariationData()
+  
+  // 关闭维度选择器浮窗
+  dimensionSelectorVisible.value = false
+  
+  // 提示用户
+  ElMessage.success('维度选择已应用')
+}
+
+function showDimensionUserGroupDialog() {
+  // 重置表单数据
+  userGroupForm.selectedCompanies = []
+  companySearchKeyword.value = ''
+  searchResults.value = []
+  
+  // 显示新增用户组对话框
+  userGroupDialogVisible.value = true
+}
+
+// 用户消费数据
+const userConsumptionData = ref([
+  { userId: 'user001', userName: '小米公司1', currentValue: 150, past1Value: 120, past2Value: 100 },
+  { userId: 'user002', userName: '小憨公司2', currentValue: 80, past1Value: 110, past2Value: 120 },
+  { userId: 'user003', userName: '大华公司3', currentValue: 200, past1Value: 150, past2Value: 130 },
+  { userId: 'user004', userName: '腾讯科技4', currentValue: 300, past1Value: 250, past2Value: 220 },
+  { userId: 'user005', userName: '阿里巴巴5', currentValue: 500, past1Value: 400, past2Value: 350 },
+  { userId: 'user006', userName: '百度公司6', currentValue: 180, past1Value: 200, past2Value: 210 },
+  { userId: 'user007', userName: '京东集团7', currentValue: 250, past1Value: 300, past2Value: 320 },
+  { userId: 'user008', userName: '网易科技8', currentValue: 120, past1Value: 130, past2Value: 140 },
+  { userId: 'user009', userName: '字节跳动9', currentValue: 350, past1Value: 300, past2Value: 280 },
+  { userId: 'user010', userName: '华为技术10', currentValue: 400, past1Value: 380, past2Value: 350 },
+  { userId: 'user011', userName: '小米公司11', currentValue: 160, past1Value: 130, past2Value: 110 },
+  { userId: 'user012', userName: '小憨公司12', currentValue: 90, past1Value: 120, past2Value: 130 },
+  { userId: 'user013', userName: '大华公司13', currentValue: 210, past1Value: 160, past2Value: 140 },
+  { userId: 'user014', userName: '腾讯科技14', currentValue: 310, past1Value: 260, past2Value: 230 },
+  { userId: 'user015', userName: '阿里巴巴15', currentValue: 510, past1Value: 410, past2Value: 360 },
+  { userId: 'user016', userName: '百度公司16', currentValue: 170, past1Value: 190, past2Value: 200 },
+  { userId: 'user017', userName: '京东集团17', currentValue: 240, past1Value: 290, past2Value: 310 },
+  { userId: 'user018', userName: '网易科技18', currentValue: 110, past1Value: 120, past2Value: 130 },
+  { userId: 'user019', userName: '字节跳动19', currentValue: 340, past1Value: 290, past2Value: 270 },
+  { userId: 'user020', userName: '华为技术20', currentValue: 390, past1Value: 370, past2Value: 340 },
+  { userId: 'user021', userName: '小米公司21', currentValue: 155, past1Value: 125, past2Value: 105 },
+  { userId: 'user022', userName: '小憨公司22', currentValue: 85, past1Value: 115, past2Value: 125 },
+  { userId: 'user023', userName: '大华公司23', currentValue: 205, past1Value: 155, past2Value: 135 },
+  { userId: 'user024', userName: '腾讯科技24', currentValue: 305, past1Value: 255, past2Value: 225 },
+  { userId: 'user025', userName: '阿里巴巴25', currentValue: 505, past1Value: 405, past2Value: 355 },
+]);
+
+// 处理用户排序组件的对比周期变化
+function handleUserComparisonChange(period: string) {
+  console.log('用户排序组件对比周期变化:', period);
+  // 这里可以根据需要做一些处理，比如更新其他组件的数据
+}
 </script>
 
 <style scoped>
@@ -2464,7 +2859,7 @@ const searchResults = ref<Array<{ id: number, name: string }>>([])
 
 .chart-container {
   flex: 1;
-  min-height: 300px;
+  min-height: 600px; /* 从300px增加到450px */
 }
 
 .table-container {
@@ -2475,7 +2870,7 @@ const searchResults = ref<Array<{ id: number, name: string }>>([])
 .chart {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 600px; /* 从300px增加到450px，与chart-container保持一致 */
 }
 
 .chart-controls {
@@ -2788,4 +3183,67 @@ const searchResults = ref<Array<{ id: number, name: string }>>([])
     align-items: flex-start;
   }
 }
+
+/* 新增用户组对话框样式 */
+.user-group-form {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* 维度选择器浮窗样式 */
+.dimension-selector-container {
+  padding: 16px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.dimension-selector-tip {
+  background-color: #f5f7fa;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border-left: 4px solid #409eff;
+}
+
+.dimension-selector-tip p {
+  margin: 4px 0;
+  color: #606266;
+  font-size: 14px;
+}
+
+.dimension-selection-area {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dimension-group {
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 16px;
+  background-color: #fff;
+}
+
+.dimension-group-title {
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #303133;
+  font-size: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.dimension-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.add-user-group-btn {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* 搜索公司输入框样式优化 */
 </style>
