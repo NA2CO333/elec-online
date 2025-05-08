@@ -51,7 +51,7 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="time" label="时间" width="160" sortable />
-                <el-table-column prop="module" label="修改模块" width="120" />
+                <el-table-column prop="module" label="修改模块" />
                 <el-table-column prop="operator" label="操作人" width="120" />
                 <el-table-column prop="type" label="修改类型" width="100">
                   <template #default="scope">
@@ -1060,10 +1060,20 @@ const executeRollback = () => {
 
 .alert-content {
   min-height: 400px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .alert-list {
   margin-top: 15px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-list .el-table {
+  flex-grow: 1;
 }
 
 .detail-box {
@@ -1227,5 +1237,7 @@ const executeRollback = () => {
   padding: 15px;
   height: calc(100% - 60px);
   overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 </style> 
