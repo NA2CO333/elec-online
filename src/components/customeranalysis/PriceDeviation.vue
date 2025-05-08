@@ -612,7 +612,9 @@ function updateScatterChart() {
           item.dayType, 
           item.timeSegment, 
           item.hasSpecialEvent
-        ])
+        ]),
+        animationDurationUpdate: 500,
+        animationEasingUpdate: 'cubicInOut'
       }
     ]
   }
@@ -812,7 +814,7 @@ function getXAxisName(variable: string): string {
 function initOrUpdateScatterChart(
   chartInstance: echarts.ECharts | null,
   chartRef: HTMLElement | null,
-  data: any[],
+  seriesData: any[],
   title: string,
   xAxisName: string,
   yAxisName: string
@@ -833,19 +835,24 @@ function initOrUpdateScatterChart(
       trigger: 'item',
       formatter: (params: any) => {
         const val = params.value;
-        return `${params.marker}<br/>
-                日期: ${val[3]}<br/>
-                日类型: ${val[2]}<br/>
+        const originalData = val[2];
+        if (!originalData) return '';
+        return `${params.marker} ${params.seriesName}<br/>
+                日期: ${originalData.date}<br/>
                 ${xAxisName}: ${val[0].toFixed(2)}<br/>
                 ${yAxisName}: ${val[1].toFixed(2)} 元/MWh`;
       }
     },
+    legend: {
+        bottom: 10,
+        data: seriesData.map(s => s.name)
+    },
     grid: {
-        top: '10%',    // 顶部留白，可根据标题和图例调整
-        left: '12%',   // 左侧留白，为Y轴名称和刻度留出空间
-        right: '5%',   // 右侧留白
-        bottom: '18%', // 底部留白，为X轴名称、刻度和图例留出空间
-        containLabel: true // 防止标签溢出
+        top: '10%',
+        left: '12%',
+        right: '5%',
+        bottom: '20%',
+        containLabel: true
     },
     xAxis: {
       name: xAxisName,
@@ -857,48 +864,51 @@ function initOrUpdateScatterChart(
       name: yAxisName + ' (元/MWh)',
       type: 'value',
       nameLocation: 'middle',
-      nameGap: 40 // 适当调整Y轴名称与轴线的距离
+      nameGap: 40
     },
-    visualMap: {
-        type: 'piecewise',
-        orient: 'horizontal',
-        left: 'center',
-        bottom: 10, // visualMap 放置在底部
-        pieces: [
-            { value: '一', label: '一', color: '#fc8452' },
-            { value: '六', label: '六', color: '#91cc75' },
-            { value: '工', label: '工', color: '#5470c6' },
-            { value: '日', label: '日', color: '#fac858' },
-            { value: '节', label: '节', color: '#ee6666' },
-            { value: '调', label: '调', color: '#73c0de' },
-        ],
-        seriesIndex: 0,
-        dimension: 2 // 数据格式为 [x, y, dayType, date]
-    },
-    series: [{
-      name: title,
-      type: 'scatter',
-      data: data,
-      symbolSize: 8,
-      animation: true,
-      animationDuration: 1000,
-      animationEasing: 'cubicOut',
-      animationDelay: (idx: number) => idx * 10
-    }]
+    series: seriesData.map(s => ({
+      ...s,
+      animationDurationUpdate: 500,
+      animationEasingUpdate: 'cubicInOut'
+    }))
   };
-  currentChart.setOption(option);
-  // 显式调用resize确保图表根据容器尺寸更新
-  currentChart.resize(); 
+  currentChart.setOption(option, false);
+  currentChart.resize();
   return currentChart;
 }
 
 function updateDayAheadPriceScatter() {
-  const data = generateCorrelationData('dayAheadPrice', dayAheadPriceCorrelationVariable.value);
+  const rawData = generateCorrelationData('dayAheadPrice', dayAheadPriceCorrelationVariable.value);
   const xAxisName = getXAxisName(dayAheadPriceCorrelationVariable.value);
+
+  // 定义日类型和对应的颜色
+  const dayTypeColors: Record<string, string> = {
+    '工': '#5470c6',
+    '六': '#91cc75',
+    '日': '#fac858',
+    '一': '#fc8452',
+    '节': '#ee6666',
+    '调': '#73c0de'
+  };
+
+  // 按日类型分组数据并创建series
+  const seriesData = Object.keys(dayTypeColors).map(dayType => {
+    const typeData = rawData.filter(item => item[2] === dayType);
+    return {
+      name: dayType,
+      type: 'scatter',
+      data: typeData.map(item => [item[0], item[1], { date: item[3] }]), // Store original data in 3rd element for tooltip
+      symbolSize: 8,
+      itemStyle: {
+        color: dayTypeColors[dayType]
+      }
+    };
+  }).filter(series => series.data.length > 0); // Filter out empty series
+
   dayAheadPriceScatterChart = initOrUpdateScatterChart(
     dayAheadPriceScatterChart,
     dayAheadPriceScatterRef.value,
-    data,
+    seriesData, // Pass the structured series data
     '关联分析：日前价',
     xAxisName,
     '日前价'
@@ -906,12 +916,37 @@ function updateDayAheadPriceScatter() {
 }
 
 function updatePriceDiffScatter() {
-  const data = generateCorrelationData('priceDiff', priceDiffCorrelationVariable.value);
+  const rawData = generateCorrelationData('priceDiff', priceDiffCorrelationVariable.value);
   const xAxisName = getXAxisName(priceDiffCorrelationVariable.value);
+
+  // 定义日类型和对应的颜色 (与上面一致)
+  const dayTypeColors: Record<string, string> = {
+    '工': '#5470c6',
+    '六': '#91cc75',
+    '日': '#fac858',
+    '一': '#fc8452',
+    '节': '#ee6666',
+    '调': '#73c0de'
+  };
+
+  // 按日类型分组数据并创建series
+  const seriesData = Object.keys(dayTypeColors).map(dayType => {
+    const typeData = rawData.filter(item => item[2] === dayType);
+    return {
+      name: dayType,
+      type: 'scatter',
+      data: typeData.map(item => [item[0], item[1], { date: item[3] }]), // Store original data for tooltip
+      symbolSize: 8,
+      itemStyle: {
+        color: dayTypeColors[dayType]
+      }
+    };
+  }).filter(series => series.data.length > 0);
+
   priceDiffScatterChart = initOrUpdateScatterChart(
     priceDiffScatterChart,
     priceDiffScatterRef.value,
-    data,
+    seriesData, // Pass the structured series data
     '关联分析：价差',
     xAxisName,
     '价差'

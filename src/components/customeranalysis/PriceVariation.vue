@@ -1,390 +1,6 @@
 <template>
   <div class="price-variation-container">
     
-    <!-- 1. 顶部区域：全局筛选器 -->
-    <div class="global-filter-section">
-      <!-- 2.1 周期对比选择器 -->
-      <div class="period-comparison-container">
-        <!-- 田字形布局 -->
-        <div class="compare-groups-grid">
-          <!-- 第一行 -->
-          <div class="compare-group-row">
-            <!-- 左上角 - 对比组1 -->
-            <div class="compare-group">
-              <div class="compare-group-header">
-                <div class="group-title">对比组 1</div>
-                <el-switch 
-                  v-model="compareGroups[0].enabled" 
-                  active-color="#409EFF" 
-                  inactive-color="#DCDFE6"
-                />
-              </div>
-              
-              <div class="compare-periods" v-if="compareGroups[0].enabled">
-                <!-- 现在周期 -->
-                <div class="period-selector current-period">
-                  <div class="period-label">现在周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[0].currentPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="currentPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handleCurrentPeriodChange(0)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 从前周期 -->
-                <div class="period-selector previous-period">
-                  <div class="period-label">从前周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[0].previousPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="previousPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handlePreviousPeriodChange(0)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 快捷对比选项 -->
-                <div class="quick-compare-options">
-                  <el-button-group>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[0].quickCompare === 'lastWeek' ? 'primary' : ''"
-                      @click="setQuickCompare(0, 'lastWeek')"
-                    >
-                      上周对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[0].quickCompare === 'lastMonth' ? 'primary' : ''"
-                      @click="setQuickCompare(0, 'lastMonth')"
-                    >
-                      上月对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[0].quickCompare === 'lastYear' ? 'primary' : ''"
-                      @click="setQuickCompare(0, 'lastYear')"
-                    >
-                      去年同期
-                    </el-button>
-                  </el-button-group>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 右上角 - 对比组2 -->
-            <div class="compare-group">
-              <div class="compare-group-header">
-                <div class="group-title">对比组 2</div>
-                <el-switch 
-                  v-model="compareGroups[1].enabled" 
-                  active-color="#409EFF" 
-                  inactive-color="#DCDFE6"
-                />
-              </div>
-              
-              <div class="compare-periods" v-if="compareGroups[1].enabled">
-                <!-- 现在周期 -->
-                <div class="period-selector current-period">
-                  <div class="period-label">现在周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[1].currentPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="currentPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handleCurrentPeriodChange(1)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 从前周期 -->
-                <div class="period-selector previous-period">
-                  <div class="period-label">从前周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[1].previousPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="previousPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handlePreviousPeriodChange(1)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 快捷对比选项 -->
-                <div class="quick-compare-options">
-                  <el-button-group>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[1].quickCompare === 'lastWeek' ? 'primary' : ''"
-                      @click="setQuickCompare(1, 'lastWeek')"
-                    >
-                      上周对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[1].quickCompare === 'lastMonth' ? 'primary' : ''"
-                      @click="setQuickCompare(1, 'lastMonth')"
-                    >
-                      上月对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[1].quickCompare === 'lastYear' ? 'primary' : ''"
-                      @click="setQuickCompare(1, 'lastYear')"
-                    >
-                      去年同期
-                    </el-button>
-                  </el-button-group>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 第二行 -->
-          <div class="compare-group-row">
-            <!-- 左下角 - 对比组3 -->
-            <div class="compare-group">
-              <div class="compare-group-header">
-                <div class="group-title">对比组 3</div>
-                <el-switch 
-                  v-model="compareGroups[2].enabled" 
-                  active-color="#409EFF" 
-                  inactive-color="#DCDFE6"
-                />
-              </div>
-              
-              <div class="compare-periods" v-if="compareGroups[2].enabled">
-                <!-- 现在周期 -->
-                <div class="period-selector current-period">
-                  <div class="period-label">现在周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[2].currentPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="currentPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handleCurrentPeriodChange(2)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 从前周期 -->
-                <div class="period-selector previous-period">
-                  <div class="period-label">从前周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[2].previousPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="previousPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handlePreviousPeriodChange(2)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 快捷对比选项 -->
-                <div class="quick-compare-options">
-                  <el-button-group>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[2].quickCompare === 'lastWeek' ? 'primary' : ''"
-                      @click="setQuickCompare(2, 'lastWeek')"
-                    >
-                      上周对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[2].quickCompare === 'lastMonth' ? 'primary' : ''"
-                      @click="setQuickCompare(2, 'lastMonth')"
-                    >
-                      上月对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[2].quickCompare === 'lastYear' ? 'primary' : ''"
-                      @click="setQuickCompare(2, 'lastYear')"
-                    >
-                      去年同期
-                    </el-button>
-                  </el-button-group>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 右下角 - 对比组4 -->
-            <div class="compare-group">
-              <div class="compare-group-header">
-                <div class="group-title">对比组 4</div>
-                <el-switch 
-                  v-model="compareGroups[3].enabled" 
-                  active-color="#409EFF" 
-                  inactive-color="#DCDFE6"
-                />
-              </div>
-              
-              <div class="compare-periods" v-if="compareGroups[3].enabled">
-                <!-- 现在周期 -->
-                <div class="period-selector current-period">
-                  <div class="period-label">现在周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[3].currentPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="currentPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handleCurrentPeriodChange(3)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 从前周期 -->
-                <div class="period-selector previous-period">
-                  <div class="period-label">从前周期</div>
-                  <el-date-picker
-                    v-model="compareGroups[3].previousPeriod"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    :shortcuts="previousPeriodShortcuts"
-                    value-format="YYYY-MM-DD"
-                    @change="handlePreviousPeriodChange(3)"
-                    size="small"
-                  />
-                </div>
-                
-                <!-- 快捷对比选项 -->
-                <div class="quick-compare-options">
-                  <el-button-group>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[3].quickCompare === 'lastWeek' ? 'primary' : ''"
-                      @click="setQuickCompare(3, 'lastWeek')"
-                    >
-                      上周对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[3].quickCompare === 'lastMonth' ? 'primary' : ''"
-                      @click="setQuickCompare(3, 'lastMonth')"
-                    >
-                      上月对比
-                    </el-button>
-                    <el-button 
-                      size="small" 
-                      :type="compareGroups[3].quickCompare === 'lastYear' ? 'primary' : ''"
-                      @click="setQuickCompare(3, 'lastYear')"
-                    >
-                      去年同期
-                    </el-button>
-                  </el-button-group>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 2.2 维度选择器 -->
-      <div class="filter-row">
-        <div class="filter-item dimension-selector">
-          <h4 class="dimension-main-title">维度选择</h4>
-          
-          <div class="dimension-groups-container">
-            <!-- 时间维度 -->
-            <div class="dimension-group time-dimensions">
-              <div class="dimension-title">时间维度</div>
-              <el-checkbox-group v-model="selectedTimeDimensions">
-                <el-checkbox label="dayType">日类型</el-checkbox>
-                <el-checkbox label="timeSegment">尖峰/高峰/平段/低谷时段</el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <!-- 气象维度 -->
-            <div class="dimension-group weather-dimensions">
-              <div class="dimension-title">气象维度</div>
-              <el-checkbox-group v-model="selectedWeatherDimensions">
-                <el-checkbox label="temperature">温度</el-checkbox>
-                <el-checkbox label="precipitation">降水</el-checkbox>
-                <el-checkbox label="humidity">湿度</el-checkbox>
-                <el-checkbox label="radiation">辐照</el-checkbox>
-                <el-checkbox label="windSpeed">风速</el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <!-- 负荷维度 -->
-            <div class="dimension-group load-dimensions">
-              <div class="dimension-title">负荷维度</div>
-              <el-checkbox-group v-model="selectedLoadDimensions">
-                <el-checkbox label="dispatchLoad">统调负荷</el-checkbox>
-                <el-checkbox label="typeB_Load">B类负荷</el-checkbox>
-                <el-checkbox label="westLoad">西电负荷</el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <!-- 其他业务相关维度 -->
-            <div class="dimension-group other-dimensions">
-              <div class="dimension-title">其他业务相关维度</div>
-              <el-checkbox-group v-model="selectedOtherDimensions">
-                <el-checkbox label="specialEvents">特殊事件</el-checkbox>
-              </el-checkbox-group>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 2.3 核心对比指标 -->
-        <div class="filter-item comparison-selector">
-          <div class="dimension-title">核心对比</div>
-          <el-checkbox-group v-model="selectedComparisonMetrics">
-            <el-checkbox label="avgPrice">平均日前价</el-checkbox>
-            <el-checkbox label="priceStdDev">日前价标准差</el-checkbox>
-            <el-checkbox label="priceJump">价格跳变次数/幅度</el-checkbox>
-          </el-checkbox-group>
-          
-          <!-- 价格跳变阈值设置 -->
-          <div class="price-jump-threshold" v-if="selectedComparisonMetrics.includes('priceJump')">
-            <div class="threshold-label">价格跳变阈值 (¥/MWh):</div>
-            <el-slider
-              v-model="priceJumpThreshold"
-              :min="10"
-              :max="500"
-              :step="10"
-              show-input
-              show-stops
-            />
-          </div>
-        </div>
-      </div>
-      
-      <!-- 2.4 应用/重置按钮 -->
-      <div class="filter-actions">
-        <el-button type="primary" @click="applyFilters">应用</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-      </div>
-    </div>
-
     <!-- 内容区域 -->
     <div class="analysis-content">
       <!-- 左侧主分析区域 (约占2/3宽度) -->
@@ -678,58 +294,6 @@
             <div id="scatterChart" class="chart"></div>
           </div>
         </div>
-        
-        <!-- 维度钻取/筛选器 -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>维度筛选</h3>
-          </div>
-          
-          <div class="dimension-filter-container">
-            <!-- 时间粒度选择 -->
-            <div class="dimension-filter-section">
-              <div class="filter-title">时间粒度</div>
-              <el-radio-group v-model="timeGranularity" size="small" @change="handleTimeGranularityChange">
-                <el-radio-button label="hour">小时</el-radio-button>
-                <el-radio-button label="day">日</el-radio-button>
-                <el-radio-button label="week">周</el-radio-button>
-              </el-radio-group>
-            </div>
-            
-            <!-- 日类型筛选 -->
-            <div class="dimension-filter-section" v-if="selectedTimeDimensions.includes('dayType')">
-              <div class="filter-title">日类型</div>
-              <el-select 
-                v-model="selectedDayTypes" 
-                multiple 
-                size="small" 
-                placeholder="选择日类型" 
-                @change="applyDimensionFilter"
-              >
-                <el-option label="工作日" value="workday" />
-                <el-option label="周末" value="weekend" />
-                <el-option label="节假日" value="holiday" />
-              </el-select>
-            </div>
-            
-            <!-- 时段类型筛选 -->
-            <div class="dimension-filter-section" v-if="selectedTimeDimensions.includes('timeSegment')">
-              <div class="filter-title">时段类型</div>
-              <el-select 
-                v-model="selectedTimeSegments" 
-                multiple 
-                size="small" 
-                placeholder="选择时段类型" 
-                @change="applyDimensionFilter"
-              >
-                <el-option label="尖峰时段" value="peak" />
-                <el-option label="高峰时段" value="high" />
-                <el-option label="平段时段" value="normal" />
-                <el-option label="低谷时段" value="valley" />
-              </el-select>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -941,8 +505,8 @@ const symbolSizeValue = ref(8)
 const showPriceChangeOption = ref(false)
 
 // 维度筛选
-const selectedDayTypes = ref<string[]>(['workday', 'weekend', 'holiday'])
-const selectedTimeSegments = ref<string[]>(['peak', 'high', 'normal', 'valley'])
+// const selectedDayTypes = ref<string[]>(['workday', 'weekend', 'holiday'])
+// const selectedTimeSegments = ref<string[]>(['peak', 'high', 'normal', 'valley'])
 
 // KPI数据
 const kpiData = reactive({
@@ -2082,21 +1646,6 @@ function initScatterChart() {
   updateScatterChart()
 }
 
-function handleTimeGranularityChange() {
-  console.log('时间粒度变更为:', timeGranularity.value)
-  // 应用到所有图表
-  changeBoxplotTimeGranularity(timeGranularity.value)
-}
-
-function applyDimensionFilter() {
-  console.log('应用维度筛选:')
-  console.log('- 日类型:', selectedDayTypes.value)
-  console.log('- 时段类型:', selectedTimeSegments.value)
-  
-  // 刷新所有图表
-  loadData()
-}
-
 // 方法定义
 function handleCurrentPeriodChange(index: number) {
   // 清除该组的快捷对比选择
@@ -2609,11 +2158,36 @@ watch(() => [
   // 当任何对比组的数据变化时更新KPI数据
   updateKPIData()
 }, { deep: true })
+
+// 方法定义
+
+// 应用维度筛选
+// function applyDimensionFilter() {
+//   console.log('应用维度筛选:')
+//   console.log('- 日类型:', selectedDayTypes.value)
+//   console.log('- 时段类型:', selectedTimeSegments.value)
+//   
+//   // 刷新所有图表
+//   loadData()
+// }
+
+// 处理时间粒度变化
+// function handleTimeGranularityChange() {
+//   console.log('时间粒度变更为:', timeGranularity.value)
+//   // 应用到所有图表
+//   changeBoxplotTimeGranularity(timeGranularity.value)
+// }
 </script>
 
 <style scoped>
 .price-variation-container {
   padding: 20px;
+}
+
+/* 内容区域样式 */
+.analysis-content {
+  display: flex;
+  gap: 20px;
 }
 
 /* 全局筛选器样式 */
