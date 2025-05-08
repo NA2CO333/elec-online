@@ -1,141 +1,28 @@
 <template>
   <div class="price-deviation-container">
-    <!-- 1. 顶部区域：全局筛选器 -->
-    <div class="global-filter-section">
-      <!-- 2.1 日期范围选择器 -->
-      <div class="filter-item date-range-selector">
-        <div class="filter-label">日期范围</div>
-        <el-date-picker
-          v-model="dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :shortcuts="dateRangeShortcuts"
-          value-format="YYYY-MM-DD"
-          @change="handleDateRangeChange"
-          size="default"
-        />
-      </div>
-      
-      <!-- 2.2 维度选择器 -->
-      <div class="filter-row">
-        <div class="filter-item dimension-selector">
-          <h4 class="dimension-main-title">维度选择</h4>
-          
-          <div class="dimension-groups-container">
-            <!-- 时间维度 -->
-            <div class="dimension-group time-dimensions">
-              <div class="dimension-title">时间维度</div>
-              <el-checkbox-group v-model="selectedTimeDimensions">
-                <el-checkbox label="dayType">日类型（工作日/周末）</el-checkbox>
-                <el-checkbox label="timeSegment">尖峰/高峰/平段/低谷时段</el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <!-- 气象维度 -->
-            <div class="dimension-group weather-dimensions">
-              <div class="dimension-title">气象维度</div>
-              <el-checkbox-group v-model="selectedWeatherDimensions">
-                <el-checkbox label="temperature">温度</el-checkbox>
-                <el-checkbox label="precipitation">降水</el-checkbox>
-                <el-checkbox label="humidity">湿度</el-checkbox>
-                <el-checkbox label="radiation">辐照</el-checkbox>
-                <el-checkbox label="windSpeed">风速</el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <!-- 负荷维度 -->
-            <div class="dimension-group load-dimensions">
-              <div class="dimension-title">负荷维度</div>
-              <el-checkbox-group v-model="selectedLoadDimensions">
-                <el-checkbox label="dispatchLoad">统调负荷</el-checkbox>
-                <el-checkbox label="classB">B类负荷</el-checkbox>
-                <el-checkbox label="westLoad">西电负荷</el-checkbox>
-              </el-checkbox-group>
-            </div>
-            
-            <!-- 其他业务相关维度 -->
-            <div class="dimension-group other-dimensions">
-              <div class="dimension-title">其他业务相关维度</div>
-              <el-checkbox-group v-model="selectedOtherDimensions">
-                <el-checkbox label="specialEvents">特殊事件</el-checkbox>
-              </el-checkbox-group>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 2.3 核心价格对比指标 -->
-      <div class="filter-row">
-        <div class="filter-item price-metric-selector">
-          <div class="filter-label">核心价格对比指标</div>
-          <el-checkbox-group v-model="selectedPriceMetrics">
-            <el-checkbox label="priceDiff">价差（实时价格 - 日前价格）</el-checkbox>
-            <el-checkbox label="priceDevRate">价差偏差率（（实时价格 / 日前价格）- 1）</el-checkbox>
-          </el-checkbox-group>
-        </div>
-      </div>
-      
-      <!-- 2.4 应用/重置按钮 -->
-      <div class="filter-actions">
-        <el-button type="primary" @click="applyFilters">应用</el-button>
-        <el-button @click="resetFilters">重置</el-button>
-      </div>
-    </div>
-
     <!-- 内容区域 -->
     <div class="analysis-content">
       <!-- 左侧主分析区 (约占2/3宽度) -->
       <div class="main-analysis-area">
-        <!-- 3.1 价格时间序列折线箱型图 -->
+        <!-- 3.4 时点价差表 -->
         <div class="analysis-card">
           <div class="card-header">
-            <h3>价格时间序列分析</h3>
+            <h3>时点价差表</h3>
             <div class="card-tools">
-              <el-tooltip content="设置阈值">
-                <el-button size="small" circle @click="showThresholdDialog">
-                  <el-icon><Setting /></el-icon>
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="下载数据">
-                <el-button size="small" circle>
-                  <el-icon><Download /></el-icon>
-                </el-button>
-              </el-tooltip>
-              <el-tooltip content="查看详情">
-                <el-button size="small" circle>
-                  <el-icon><View /></el-icon>
-                </el-button>
-              </el-tooltip>
-            </div>
-          </div>
-          <div class="chart-container">
-            <div ref="priceTimeSeriesChartRef" class="chart"></div>
-          </div>
-        </div>
-        
-        <!-- 3.2 价差透视表 (按维度筛选) -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>价差透视表</h3>
-            <div class="card-tools">
-              <el-dropdown>
-                <el-button size="small">
-                  聚合方式
-                  <el-icon><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="changeAggregation('avg')">平均值</el-dropdown-item>
-                    <el-dropdown-item @click="changeAggregation('avgAbs')">平均绝对值</el-dropdown-item>
-                    <el-dropdown-item @click="changeAggregation('max')">最大值</el-dropdown-item>
-                    <el-dropdown-item @click="changeAggregation('min')">最小值</el-dropdown-item>
-                    <el-dropdown-item @click="changeAggregation('std')">标准差</el-dropdown-item>
-                    <el-dropdown-item @click="changeAggregation('overThreshold')">超阈值计数</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <!-- 日期范围选择器 -->
+              <div class="date-range-selector">
+                <el-date-picker
+                  v-model="hourlyPriceDeviationDateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  format="YYYY/MM/DD"
+                  value-format="YYYY-MM-DD"
+                  :shortcuts="dateRangeShortcuts"
+                  @change="loadHourlyPriceDeviationData"
+                />
+              </div>
               <el-tooltip content="导出表格">
                 <el-button size="small" circle>
                   <el-icon><Download /></el-icon>
@@ -143,163 +30,113 @@
               </el-tooltip>
             </div>
           </div>
-          <div class="table-container">
+          <div class="table-container hourly-price-deviation-table">
             <el-table
-              :data="pivotTableData"
+              :data="[
+                ...hourlyPriceDeviationData,
+                { type: '价差均值', date: '', dayType: '', ...Object.fromEntries(statisticalData.average.map((v, i) => [`h${i}`, v])) },
+                { type: '标准差', date: '', dayType: '', ...Object.fromEntries(statisticalData.stdDev.map((v, i) => [`h${i}`, v])) },
+                { type: '概率', date: '', dayType: '', ...Object.fromEntries(statisticalData.probability.map((v, i) => [`h${i}`, v])) }
+              ]"
               style="width: 100%"
-              height="350"
               border
-              :cell-class-name="getCellClass"
-              @cell-click="handleCellClick"
+              height="650"
+              :cell-class-name="getHourlyDeviationCellClass"
             >
-              <el-table-column fixed prop="dimension" label="维度/时段" width="150" />
+              <el-table-column prop="date" label="日期" width="100" fixed align="center">
+                <template #default="{ row }">
+                  {{ row.type || row.date }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="dayType" label="日类型" width="90" fixed align="center">
+                <template #default="{ row }">
+                  <template v-if="row.type === '概率'">
+                    <div class="probability-input">
+                      <el-input
+                        v-model="probabilityConditionInput"
+                        placeholder=">0, < -5"
+                        style="width: 100%;"
+                        :input-style="{
+                          color: '#000000',
+                          backgroundColor: '#ffffff'
+                        }"
+                        @input="setProbabilityCondition"
+                      />
+                    </div>
+                  </template>
+                  <template v-else>
+                    {{ row.dayType }}
+                  </template>
+                </template>
+              </el-table-column>
               <el-table-column
-                v-for="(hour, index) in 24"
-                :key="index"
-                :prop="'h' + (index+1)"
-                :label="(index+1) + '时'"
-                width="80"
-              />
-              <el-table-column prop="average" label="平均" width="80" />
+                v-for="hour in 24"
+                :key="hour - 1"
+                :prop="`h${hour - 1}`"
+                :label="`${hour - 1}时`"
+                width="57"
+                align="center"
+              >
+                <template #default="{ row }">
+                  <template v-if="row.type === '概率'">
+                    {{ row[`h${hour - 1}`] }}%
+                  </template>
+                  <template v-else>
+                    {{ row[`h${hour - 1}`] }}
+                  </template>
+                </template>
+              </el-table-column>
             </el-table>
           </div>
         </div>
         
-        <!-- 3.3 散点图 -->
-        <div class="analysis-card">
+        <!-- 4. 关联分析模块 -->
+        <div class="correlation-analysis-section analysis-card">
           <div class="card-header">
-            <h3>关联分析散点图</h3>
-            <div class="card-tools">
-              <el-dropdown>
-                <el-button size="small">
-                  X轴维度
-                  <el-icon><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="setScatterXAxis('dayAheadPrice')">日前价格</el-dropdown-item>
-                    <el-dropdown-item @click="setScatterXAxis('dispatchLoad')">统调负荷</el-dropdown-item>
-                    <el-dropdown-item @click="setScatterXAxis('temperature')">温度</el-dropdown-item>
-                    <el-dropdown-item @click="setScatterXAxis('windSpeed')">风速</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-              <el-dropdown>
-                <el-button size="small">
-                  点颜色编码
-                  <el-icon><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="setScatterColorBy('dayType')">日类型</el-dropdown-item>
-                    <el-dropdown-item @click="setScatterColorBy('timeSegment')">时间段</el-dropdown-item>
-                    <el-dropdown-item @click="setScatterColorBy('specialEvent')">特殊事件</el-dropdown-item>
-                    <el-dropdown-item @click="setScatterColorBy('none')">无</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-              <el-tooltip content="下载数据">
-                <el-button size="small" circle>
-                  <el-icon><Download /></el-icon>
-                </el-button>
-              </el-tooltip>
-            </div>
+            <h3>关联分析</h3>
           </div>
-          <div class="chart-container">
-            <div ref="scatterChartRef" class="chart"></div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 右侧辅助分析区 (约占1/3宽度) -->
-      <div class="secondary-analysis-area">
-        <!-- 4.1 顶部：关键指标汇总 (KPI卡片) -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>关键指标汇总</h3>
-          </div>
-          <div class="kpi-container">
-            <div class="kpi-card">
-              <div class="kpi-title">平均日前价格</div>
-              <div class="kpi-value">{{ averageMetrics.dayAheadPrice.toFixed(2) }} ¥/MWh</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">平均实时价格</div>
-              <div class="kpi-value">{{ averageMetrics.realTimePrice.toFixed(2) }} ¥/MWh</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">平均价差</div>
-              <div class="kpi-value" :class="averageMetrics.priceDiff > 0 ? 'positive-value' : (averageMetrics.priceDiff < 0 ? 'negative-value' : '')">
-                {{ averageMetrics.priceDiff.toFixed(2) }} ¥/MWh
+          <div class="dual-scatter-container">
+            <!-- 左侧散点图 - 日前价 vs 关联变量 -->
+            <div class="scatter-chart-box">
+              <div class="chart-controls">
+                <div class="control-group">
+                  <span class="control-label">下拉菜单A:</span>
+                  <el-select v-model="dayAheadPriceCorrelationVariable" placeholder="选择关联变量" size="small" style="width: 150px;">
+                    <el-option label="气温" value="temperature" />
+                    <el-option label="云量" value="cloudCover" />
+                    <el-option label="风速" value="windSpeed" />
+                    <el-option label="降水量" value="precipitation" />
+                    <el-option label="辐照" value="radiation" />
+                    <el-option label="统调负荷" value="dispatchLoad" />
+                    <el-option label="B类负荷" value="classBLoad" />
+                    <el-option label="西电负荷" value="westLoad" />
+                  </el-select>
+                </div>
               </div>
+              <div class="chart-title">关联分析：日前价</div>
+              <div class="chart-container" ref="dayAheadPriceScatterRef" style="height: 400px;"></div>
             </div>
-            <div class="kpi-card">
-              <div class="kpi-title">平均绝对价差</div>
-              <div class="kpi-value">{{ averageMetrics.absPriceDiff.toFixed(2) }} ¥/MWh</div>
+
+            <!-- 右侧散点图 - 价差 vs 关联变量 -->
+            <div class="scatter-chart-box">
+              <div class="chart-controls">
+                <div class="control-group">
+                  <span class="control-label">下拉菜单A:</span>
+                  <el-select v-model="priceDiffCorrelationVariable" placeholder="选择关联变量" size="small" style="width: 150px;">
+                    <el-option label="气温" value="temperature" />
+                    <el-option label="云量" value="cloudCover" />
+                    <el-option label="风速" value="windSpeed" />
+                    <el-option label="降水量" value="precipitation" />
+                    <el-option label="辐照" value="radiation" />
+                    <el-option label="统调负荷" value="dispatchLoad" />
+                    <el-option label="B类负荷" value="classBLoad" />
+                    <el-option label="西电负荷" value="westLoad" />
+                  </el-select>
+                </div>
+              </div>
+              <div class="chart-title">关联分析：价差</div>
+              <div class="chart-container" ref="priceDiffScatterRef" style="height: 400px;"></div>
             </div>
-            <div class="kpi-card">
-              <div class="kpi-title">价差标准差</div>
-              <div class="kpi-value">{{ averageMetrics.priceDiffStd.toFixed(2) }} ¥/MWh</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">超正向阈值次数</div>
-              <div class="kpi-value positive-value">{{ averageMetrics.positiveThresholdCount }}次</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-title">超负向阈值次数</div>
-              <div class="kpi-value negative-value">{{ averageMetrics.negativeThresholdCount }}次</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 4.2 中部：价差分布图 -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>价差分布图</h3>
-            <div class="card-tools">
-              <el-radio-group v-model="distributionChartType" size="small">
-                <el-radio-button label="histogram">直方图</el-radio-button>
-                <el-radio-button label="density">密度图</el-radio-button>
-              </el-radio-group>
-            </div>
-          </div>
-          <div class="chart-container">
-            <div ref="distributionChartRef" class="chart"></div>
-          </div>
-        </div>
-        
-        <!-- 4.3 底部：Top N极端价差时段列表 -->
-        <div class="analysis-card">
-          <div class="card-header">
-            <h3>Top N极端价差时段</h3>
-            <div class="card-tools">
-              <el-select v-model="topNCount" placeholder="选择数量" size="small">
-                <el-option label="Top 5" :value="5" />
-                <el-option label="Top 10" :value="10" />
-                <el-option label="Top 20" :value="20" />
-              </el-select>
-            </div>
-          </div>
-          <div class="table-container">
-            <el-table :data="topNData" style="width: 100%" height="280" border>
-              <el-table-column prop="date" label="日期" width="100" />
-              <el-table-column prop="hour" label="时点" width="80" />
-              <el-table-column prop="priceDiff" label="价差(¥/MWh)" width="120">
-                <template #default="scope">
-                  <span :class="scope.row.priceDiff > 0 ? 'positive-value' : 'negative-value'">
-                    {{ scope.row.priceDiff.toFixed(2) }}
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="priceDevRate" label="价差率(%)" width="100">
-                <template #default="scope">
-                  <span :class="scope.row.priceDevRate > 0 ? 'positive-value' : 'negative-value'">
-                    {{ (scope.row.priceDevRate * 100).toFixed(2) }}
-                  </span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="possibleReason" label="可能原因" />
-            </el-table>
           </div>
         </div>
       </div>
@@ -358,10 +195,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 import { ArrowDown, Download, View, Setting } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 // 日期计算帮助函数
 function getDaysAgo(days: number) {
@@ -459,9 +297,7 @@ const selectedOtherDimensions = ref<string[]>(['specialEvents'])
 const selectedPriceMetrics = ref<string[]>(['priceDiff', 'priceDevRate'])
 
 // 图表引用
-const priceTimeSeriesChartRef = ref<HTMLElement | null>(null)
 const scatterChartRef = ref<HTMLElement | null>(null)
-let priceTimeSeriesChart: echarts.ECharts | null = null
 let scatterChart: echarts.ECharts | null = null
 
 // 阈值设置
@@ -481,206 +317,51 @@ const scatterColorBy = ref('dayType') // 默认按日类型着色
 const currentAggregation = ref('avg') // 默认聚合方式为平均
 // 透视表数据(模拟数据)
 const pivotTableData = ref([
-  {
-    dimension: '工作日',
-    h1: 45.2,
-    h2: 37.8,
-    h3: 29.1,
-    h4: 22.5,
-    h5: 18.7,
-    h6: 25.3,
-    h7: 31.6,
-    h8: 42.9,
-    h9: 56.4,
-    h10: 68.7,
-    h11: 72.3,
-    h12: 78.5,
-    h13: 75.2,
-    h14: 73.8,
-    h15: 71.4,
-    h16: 69.3,
-    h17: 65.7,
-    h18: 78.9,
-    h19: 85.3,
-    h20: 76.4,
-    h21: 67.2,
-    h22: 58.6,
-    h23: 52.1,
-    h24: 49.5,
-    average: 57.6
-  },
-  {
-    dimension: '周末',
-    h1: 38.5,
-    h2: 32.7,
-    h3: 26.4,
-    h4: 19.8,
-    h5: 15.2,
-    h6: 18.6,
-    h7: 25.9,
-    h8: 35.4,
-    h9: 48.7,
-    h10: 57.3,
-    h11: 62.8,
-    h12: 68.2,
-    h13: 65.7,
-    h14: 63.4,
-    h15: 61.2,
-    h16: 59.5,
-    h17: 57.8,
-    h18: 68.4,
-    h19: 75.2,
-    h20: 65.8,
-    h21: 56.7,
-    h22: 48.9,
-    h23: 45.2,
-    h24: 41.8,
-    average: 50.1
-  },
-  {
-    dimension: '尖峰',
-    h1: 0,
-    h2: 0,
-    h3: 0,
-    h4: 0,
-    h5: 0,
-    h6: 0,
-    h7: 0,
-    h8: 0,
-    h9: 0,
-    h10: 0,
-    h11: 0,
-    h12: 0,
-    h13: 0,
-    h14: 0,
-    h15: 0,
-    h16: 0,
-    h17: 0,
-    h18: 78.9,
-    h19: 85.3,
-    h20: 76.4,
-    h21: 67.2,
-    h22: 0,
-    h23: 0,
-    h24: 0,
-    average: 77.0
-  },
-  {
-    dimension: '高峰',
-    h1: 0,
-    h2: 0,
-    h3: 0,
-    h4: 0,
-    h5: 0,
-    h6: 0,
-    h7: 0,
-    h8: 42.9,
-    h9: 56.4,
-    h10: 68.7,
-    h11: 72.3,
-    h12: 78.5,
-    h13: 75.2,
-    h14: 73.8,
-    h15: 71.4,
-    h16: 69.3,
-    h17: 65.7,
-    h18: 0,
-    h19: 0,
-    h20: 0,
-    h21: 0,
-    h22: 58.6,
-    h23: 0,
-    h24: 0,
-    average: 66.6
-  },
-  {
-    dimension: '平段',
-    h1: 0,
-    h2: 0,
-    h3: 0,
-    h4: 0,
-    h5: 0,
-    h6: 25.3,
-    h7: 31.6,
-    h8: 0,
-    h9: 0,
-    h10: 0,
-    h11: 0,
-    h12: 0,
-    h13: 0,
-    h14: 0,
-    h15: 0,
-    h16: 0,
-    h17: 0,
-    h18: 0,
-    h19: 0,
-    h20: 0,
-    h21: 0,
-    h22: 0,
-    h23: 52.1,
-    h24: 49.5,
-    average: 39.6
-  },
-  {
-    dimension: '低谷',
-    h1: 45.2,
-    h2: 37.8,
-    h3: 29.1,
-    h4: 22.5,
-    h5: 18.7,
-    h6: 0,
-    h7: 0,
-    h8: 0,
-    h9: 0,
-    h10: 0,
-    h11: 0,
-    h12: 0,
-    h13: 0,
-    h14: 0,
-    h15: 0,
-    h16: 0,
-    h17: 0,
-    h18: 0,
-    h19: 0,
-    h20: 0,
-    h21: 0,
-    h22: 0,
-    h23: 0,
-    h24: 0,
-    average: 30.7
-  }
+  // ... 移除所有透视表数据 ...
 ])
 
-// 增加KPI指标数据
-const averageMetrics = reactive({
-  dayAheadPrice: 350.75, // 平均日前价格
-  realTimePrice: 372.45, // 平均实时价格
-  priceDiff: 21.70, // 平均价差
-  absPriceDiff: 45.32, // 平均绝对价差
-  priceDiffStd: 38.67, // 价差标准差
-  positiveThresholdCount: 15, // 超正向阈值次数
-  negativeThresholdCount: 8 // 超负向阈值次数
+// 时点价差表类型定义
+interface HourlyPriceDeviation {
+  date: string
+  dayType: string
+  [key: string]: string | number // 用于存储0-23小时的价差数据
+}
+
+interface StatisticalData {
+  average: number[]
+  stdDev: number[]
+  probability: number[]
+}
+
+// 时点价差表数据
+const hourlyPriceDeviationDateRange = ref<[string, string]>([getDaysAgo(30), getDaysAgo(1)])
+const hourlyPriceDeviationData = ref<HourlyPriceDeviation[]>([])
+const statisticalData = reactive<StatisticalData>({
+  average: Array(24).fill(0),
+  stdDev: Array(24).fill(0),
+  probability: Array(24).fill(0)
 })
+const probabilityCondition = ref('')
+const probabilityConditionInput = ref('')
 
-// 价差分布图设置
-const distributionChartRef = ref<HTMLElement | null>(null)
-let distributionChart: echarts.ECharts | null = null
-const distributionChartType = ref('histogram') // 'histogram' 或 'density'
+// 关联分析散点图
+const dayAheadPriceScatterRef = ref<HTMLElement | null>(null)
+const priceDiffScatterRef = ref<HTMLElement | null>(null)
+let dayAheadPriceScatterChart: echarts.ECharts | null = null
+let priceDiffScatterChart: echarts.ECharts | null = null
 
-// Top N极端价差设置
-const topNCount = ref(10)
-const topNData = ref([
-  { date: '2023-06-15', hour: 19, priceDiff: 120.45, priceDevRate: 0.35, possibleReason: '高峰时段负荷突增' },
-  { date: '2023-06-14', hour: 14, priceDiff: 98.32, priceDevRate: 0.28, possibleReason: '输电故障' },
-  { date: '2023-06-16', hour: 11, priceDiff: 85.67, priceDevRate: 0.22, possibleReason: '高温天气' },
-  { date: '2023-06-13', hour: 20, priceDiff: 76.54, priceDevRate: 0.19, possibleReason: '高峰时段负荷突增' },
-  { date: '2023-06-12', hour: 15, priceDiff: 65.78, priceDevRate: 0.17, possibleReason: '高温天气' },
-  { date: '2023-06-17', hour: 2, priceDiff: -82.45, priceDevRate: -0.25, possibleReason: '低谷时段风力发电增加' },
-  { date: '2023-06-18', hour: 3, priceDiff: -75.32, priceDevRate: -0.23, possibleReason: '低谷时段风力发电增加' },
-  { date: '2023-06-15', hour: 4, priceDiff: -68.91, priceDevRate: -0.20, possibleReason: '低谷时段负荷低估' },
-  { date: '2023-06-16', hour: 1, priceDiff: -62.38, priceDevRate: -0.18, possibleReason: '低谷时段负荷低估' },
-  { date: '2023-06-14', hour: 5, priceDiff: -56.72, priceDevRate: -0.16, possibleReason: '凌晨气温下降' }
-])
+const dayAheadPriceCorrelationVariable = ref('temperature') // 默认关联气温
+const priceDiffCorrelationVariable = ref('temperature') // 默认关联气温
+
+// 日类型映射
+const dayTypeMap: Record<string, string> = {
+  'WORKDAY': '工',
+  'SATURDAY': '六',
+  'SUNDAY': '日',
+  'MONDAY': '一',
+  'ADJUSTED_WORKDAY': '调',
+  'HOLIDAY': '节'
+}
 
 // 方法定义
 function handleDateRangeChange() {
@@ -714,7 +395,7 @@ function showThresholdDialog() {
 function applyThresholds() {
   thresholdDialogVisible.value = false
   // 更新图表阈值线
-  updatePriceTimeSeriesChart()
+  updateScatterChart()
 }
 
 // 透视表方法
@@ -772,7 +453,7 @@ function loadData() {
   
   // 初始化图表
   nextTick(() => {
-    initCharts()
+    initScatterChart()
   })
   
   // 加载透视表数据
@@ -787,212 +468,6 @@ function loadPivotTableData() {
 }
 
 // 图表初始化
-function initCharts() {
-  initPriceTimeSeriesChart()
-  initScatterChart()
-  initDistributionChart()
-}
-
-function initPriceTimeSeriesChart() {
-  // 初始化价格时间序列折线箱型图
-  if (priceTimeSeriesChartRef.value) {
-    priceTimeSeriesChart = echarts.init(priceTimeSeriesChartRef.value)
-    updatePriceTimeSeriesChart()
-  }
-}
-
-function updatePriceTimeSeriesChart() {
-  // 更新价格时间序列折线箱型图
-  if (!priceTimeSeriesChart) return
-  
-  // 生成日期数组
-  const dates = []
-  const startDate = dayjs(dateRange.value[0])
-  const endDate = dayjs(dateRange.value[1])
-  const dayCount = endDate.diff(startDate, 'day') + 1
-  
-  for (let i = 0; i < dayCount; i++) {
-    dates.push(startDate.add(i, 'day').format('MM-DD'))
-  }
-  
-  // 模拟价差数据
-  const priceDiffData = Array.from({ length: dayCount }, () => Math.floor(Math.random() * 100) - 40)
-  const priceDevRateData = Array.from({ length: dayCount }, () => (Math.random() * 0.4) - 0.15)
-  
-  // 模拟箱型图数据
-  const boxplotData = dates.map(() => {
-    // 生成5个数据点：最小值、下四分位、中位数、上四分位、最大值
-    const values = Array.from({ length: 5 }, () => Math.floor(Math.random() * 100) - 40).sort((a, b) => a - b)
-    return values
-  })
-  
-  // 特殊事件数据
-  const specialEvents = [
-    { date: dates[2], name: '电网故障', value: priceDiffData[2] + 5 },
-    { date: dates[5], name: '机组检修', value: priceDiffData[5] + 5 }
-  ]
-  
-  const option = {
-    title: {
-      text: '日前vs实时价格偏差分析',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      },
-      formatter: function(params: any) {
-        let result = params[0].axisValue + '<br/>'
-        params.forEach((param: any) => {
-          if (param.seriesName === '价差') {
-            result += param.marker + param.seriesName + ': ' + param.value + ' ¥/MWh<br/>'
-          } else if (param.seriesName === '价差率') {
-            result += param.marker + param.seriesName + ': ' + (param.value * 100).toFixed(2) + '%<br/>'
-          } else if (param.seriesName === '价差分布') {
-            result += param.marker + param.seriesName + ': [' + 
-              param.value[1] + ', ' + param.value[2] + ', ' + 
-              param.value[3] + ', ' + param.value[4] + '] ¥/MWh<br/>'
-          } else if (param.seriesName === '特殊事件') {
-            result += param.marker + param.seriesName + ': ' + param.data.name + '<br/>'
-          }
-        })
-        return result
-      }
-    },
-    legend: {
-      data: ['价差', '价差率', '价差分布', '特殊事件'],
-      left: 10
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: dates
-    },
-    yAxis: [
-      {
-        type: 'value',
-        name: '价差(¥/MWh)',
-        position: 'left',
-        axisLine: {
-          show: true,
-          lineStyle: {
-            color: '#5470C6'
-          }
-        },
-        axisLabel: {
-          formatter: '{value} ¥/MWh'
-        }
-      },
-      {
-        type: 'value',
-        name: '价差率(%)',
-        position: 'right',
-        axisLine: {
-          show: true,
-          lineStyle: {
-            color: '#91CC75'
-          }
-        },
-        axisLabel: {
-          formatter: '{value}%'
-        },
-        min: -20,
-        max: 40
-      }
-    ],
-    series: [
-      {
-        name: '价差',
-        type: 'line',
-        data: priceDiffData,
-        yAxisIndex: 0,
-        markLine: {
-          data: [
-            {
-              name: '价差上限',
-              yAxis: thresholdForm.upperPriceDiff,
-              lineStyle: { color: '#FF4500', type: 'dashed' },
-              label: { show: true, position: 'end' }
-            },
-            {
-              name: '价差下限',
-              yAxis: thresholdForm.lowerPriceDiff,
-              lineStyle: { color: '#4169E1', type: 'dashed' },
-              label: { show: true, position: 'end' }
-            }
-          ]
-        }
-      },
-      {
-        name: '价差率',
-        type: 'line',
-        yAxisIndex: 1,
-        data: priceDevRateData,
-        lineStyle: {
-          color: '#91CC75'
-        },
-        itemStyle: {
-          color: '#91CC75'
-        },
-        markLine: {
-          data: [
-            {
-              name: '价差率上限',
-              yAxis: thresholdForm.upperPriceDevRate / 100,
-              lineStyle: { color: '#FF4500', type: 'dashed' },
-              label: { show: true, formatter: '{c}%', position: 'end' }
-            },
-            {
-              name: '价差率下限',
-              yAxis: thresholdForm.lowerPriceDevRate / 100,
-              lineStyle: { color: '#4169E1', type: 'dashed' },
-              label: { show: true, formatter: '{c}%', position: 'end' }
-            }
-          ]
-        }
-      },
-      {
-        name: '价差分布',
-        type: 'boxplot',
-        data: boxplotData,
-        yAxisIndex: 0,
-        itemStyle: {
-          color: '#73c0de'
-        }
-      },
-      {
-        name: '特殊事件',
-        type: 'scatter',
-        data: specialEvents.map(event => ({
-          value: [event.date, event.value],
-          name: event.name
-        })),
-        yAxisIndex: 0,
-        symbolSize: 15,
-        itemStyle: {
-          color: '#FF0000'
-        },
-        label: {
-          show: true,
-          formatter: function(param: any) {
-            return '⚠'
-          },
-          position: 'inside',
-          color: '#ffffff'
-        }
-      }
-    ]
-  }
-  
-  priceTimeSeriesChart.setOption(option)
-}
-
 function initScatterChart() {
   // 初始化散点图
   if (scatterChartRef.value) {
@@ -1145,186 +620,9 @@ function updateScatterChart() {
   scatterChart.setOption(option)
 }
 
-// 初始化价差分布图
-function initDistributionChart() {
-  if (distributionChartRef.value) {
-    distributionChart = echarts.init(distributionChartRef.value)
-    updateDistributionChart()
-  }
-}
-
-// 更新价差分布图
-function updateDistributionChart() {
-  if (!distributionChart) return
-  
-  // 生成模拟数据
-  const data = Array.from({ length: 100 }, () => Math.floor(Math.random() * 120) - 60) // -60 to 60
-  
-  // 直方图数据
-  const histogramData = (() => {
-    // 将数据分为20个区间
-    const binWidth = 10
-    const bins: number[] = Array(12).fill(0)
-    const binLabels = []
-    
-    for (let i = 0; i < bins.length; i++) {
-      const min = -60 + i * binWidth
-      const max = min + binWidth
-      binLabels.push(`${min}~${max}`)
-    }
-    
-    // 计算每个区间的频数
-    data.forEach(value => {
-      const binIndex = Math.floor((value + 60) / binWidth)
-      if (binIndex >= 0 && binIndex < bins.length) {
-        bins[binIndex]++
-      }
-    })
-    
-    return {
-      bins,
-      binLabels
-    }
-  })()
-  
-  // 密度图数据
-  const densityData = (() => {
-    // 密度估计
-    const densityPoints = []
-    for (let x = -70; x <= 70; x += 2) {
-      let density = 0
-      data.forEach(value => {
-        // 使用高斯核函数进行密度估计
-        const distance = x - value
-        density += Math.exp(-(distance * distance) / (2 * 15 * 15)) / (Math.sqrt(2 * Math.PI) * 15)
-      })
-      densityPoints.push([x, density * 100]) // 放大密度值以便可视化
-    }
-    return densityPoints
-  })()
-  
-  let option
-  if (distributionChartType.value === 'histogram') {
-    option = {
-      title: {
-        text: '价差分布直方图',
-        left: 'center'
-      },
-      tooltip: {
-        trigger: 'item',
-        formatter: '{b}: {c}次'
-      },
-      xAxis: {
-        type: 'category',
-        data: histogramData.binLabels,
-        name: '价差区间(¥/MWh)',
-        nameLocation: 'middle',
-        nameGap: 30
-      },
-      yAxis: {
-        type: 'value',
-        name: '频数',
-        nameLocation: 'middle',
-        nameGap: 30
-      },
-      series: [
-        {
-          data: histogramData.bins,
-          type: 'bar',
-          itemStyle: {
-            color: function(params: any) {
-              const value = parseFloat(params.name.split('~')[0])
-              if (value > 30) return '#f56c6c'
-              if (value > 0) return '#fac858'
-              if (value > -30) return '#67c23a'
-              return '#409eff'
-            }
-          }
-        }
-      ]
-    }
-  } else {
-    option = {
-      title: {
-        text: '价差分布密度图',
-        left: 'center'
-      },
-      tooltip: {
-        trigger: 'axis',
-        formatter: function(params: any) {
-          return `价差: ${params[0].data[0]} ¥/MWh<br>密度: ${params[0].data[1].toFixed(4)}`
-        }
-      },
-      xAxis: {
-        type: 'value',
-        name: '价差(¥/MWh)',
-        nameLocation: 'middle',
-        nameGap: 30
-      },
-      yAxis: {
-        type: 'value',
-        name: '密度值',
-        nameLocation: 'middle',
-        nameGap: 30
-      },
-      series: [
-        {
-          data: densityData,
-          type: 'line',
-          smooth: true,
-          lineStyle: {
-            width: 2
-          },
-          areaStyle: {
-            opacity: 0.5,
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(80, 141, 255, 0.8)' },
-                { offset: 1, color: 'rgba(80, 141, 255, 0.1)' }
-              ]
-            }
-          }
-        }
-      ],
-      // 标记价差阈值线
-      visualMap: {
-        show: false,
-        pieces: [
-          { gt: thresholdForm.upperPriceDiff, color: '#f56c6c' },
-          { gt: 0, lte: thresholdForm.upperPriceDiff, color: '#fac858' },
-          { gt: thresholdForm.lowerPriceDiff, lte: 0, color: '#67c23a' },
-          { lte: thresholdForm.lowerPriceDiff, color: '#409eff' }
-        ],
-        dimension: 0,
-        seriesIndex: 0
-      }
-    }
-  }
-  
-  distributionChart.setOption(option)
-}
-
-// 监听分布图类型变化
-watch(distributionChartType, () => {
-  updateDistributionChart()
-})
-
-// 监听TopN数量变化
-watch(topNCount, () => {
-  // 可以在这里加载对应数量的数据
-  console.log('加载Top', topNCount.value, '极端价差时段')
-})
-
 // 窗口大小变化时重绘图表
 function handleResize() {
-  priceTimeSeriesChart?.resize()
   scatterChart?.resize()
-  distributionChart?.resize()
 }
 
 // 生命周期钩子
@@ -1334,6 +632,11 @@ onMounted(() => {
   
   // 添加窗口大小变化监听
   window.addEventListener('resize', handleResize)
+
+  nextTick(() => {
+      updateDayAheadPriceScatter();
+      updatePriceDiffScatter();
+  });
 })
 
 onUnmounted(() => {
@@ -1341,10 +644,287 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   
   // 销毁图表实例
-  priceTimeSeriesChart?.dispose()
   scatterChart?.dispose()
-  distributionChart?.dispose()
+
+  window.removeEventListener('resize', handleCorrelationChartsResize)
+  dayAheadPriceScatterChart?.dispose()
+  priceDiffScatterChart?.dispose()
 })
+
+// 时点价差表方法
+function loadHourlyPriceDeviationData() {
+  // 模拟数据生成
+  const [startDate, endDate] = hourlyPriceDeviationDateRange.value
+  const days = dayjs(endDate).diff(dayjs(startDate), 'day') + 1
+  
+  const data: HourlyPriceDeviation[] = []
+  for (let i = 0; i < days; i++) {
+    const currentDate = dayjs(startDate).add(i, 'day')
+    const dayType = ['WORKDAY', 'SATURDAY', 'SUNDAY', 'HOLIDAY'][Math.floor(Math.random() * 4)]
+    
+    const hourlyData: HourlyPriceDeviation = {
+      date: currentDate.format('YYYY/MM/DD'),
+      dayType: dayTypeMap[dayType]
+    }
+    
+    // 生成24小时的价差数据
+    for (let hour = 0; hour < 24; hour++) {
+      hourlyData[`h${hour}`] = Math.round(Math.random() * 200 - 100) // 使用Math.round确保生成整数
+    }
+    
+    data.push(hourlyData)
+  }
+  
+  hourlyPriceDeviationData.value = data
+  calculateStatistics()
+}
+
+// 计算统计数据
+function calculateStatistics() {
+  const data = hourlyPriceDeviationData.value
+  
+  // 计算每个小时的均值
+  statisticalData.average = Array(24).fill(0).map((_, hour) => {
+    const values = data.map(row => {
+      const realTimePrice = Number(row[`h${hour}`])
+      const dayAheadPrice = 0 // 这里需要从数据中获取日前价格
+      return realTimePrice - dayAheadPrice
+    })
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+  })
+  
+  // 计算每个小时的标准差
+  statisticalData.stdDev = Array(24).fill(0).map((_, hour) => {
+    const values = data.map(row => {
+      const realTimePrice = Number(row[`h${hour}`])
+      const dayAheadPrice = 0 // 这里需要从数据中获取日前价格
+      return realTimePrice - dayAheadPrice
+    })
+    const mean = statisticalData.average[hour]
+    const variance = values.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (values.length - 1)
+    return Math.round(Math.sqrt(variance))
+  })
+  
+  // 计算概率（如果有条件）
+  if (probabilityCondition.value) {
+    calculateProbability()
+  }
+}
+
+// 计算满足条件的概率
+function calculateProbability() {
+  const condition = probabilityCondition.value.trim()
+  const operator = condition.match(/[><=!]+/)?.[0]
+  const value = Math.round(Number(condition.match(/-?\d+(\.\d+)?/)?.[0]))
+  
+  if (!operator || isNaN(value)) return
+  
+  const data = hourlyPriceDeviationData.value
+  statisticalData.probability = Array(24).fill(0).map((_, hour) => {
+    const values = data.map(row => {
+      const realTimePrice = Number(row[`h${hour}`])
+      const dayAheadPrice = 0 // 这里需要从数据中获取日前价格
+      return realTimePrice - dayAheadPrice
+    })
+    const satisfiedCount = values.filter(v => {
+      switch (operator) {
+        case '>': return v > value
+        case '<': return v < value
+        case '>=': return v >= value
+        case '<=': return v <= value
+        case '==': return v === value
+        case '!=': return v !== value
+        default: return false
+      }
+    }).length
+    return Math.round((satisfiedCount / values.length) * 100)
+  })
+}
+
+// 设置概率计算条件
+function setProbabilityCondition() {
+  const input = probabilityConditionInput.value.trim()
+  if (!input.match(/^[><=!]+\s*-?\d+(\.\d+)?$/)) {
+    return
+  }
+  probabilityCondition.value = input
+  calculateProbability()
+}
+
+// 获取单元格样式类名
+function getHourlyDeviationCellClass({ row, column }: { row: any, column: any }) {
+  if (column.property.startsWith('h') && !row.type) {
+    const value = Number(row[column.property])
+    if (value > 200) return 'cell-positive-5'
+    if (value > 100) return 'cell-positive-4'
+    if (value > 50) return 'cell-positive-3'
+    if (value > 20) return 'cell-positive-2'
+    if (value > 5) return 'cell-positive-1'
+    if (value < -200) return 'cell-negative-5'
+    if (value < -100) return 'cell-negative-4'
+    if (value < -50) return 'cell-negative-3'
+    if (value < -20) return 'cell-negative-2'
+    if (value < -5) return 'cell-negative-1'
+  }
+  return ''
+}
+
+// 监听日期范围变化
+watch(hourlyPriceDeviationDateRange, () => {
+  loadHourlyPriceDeviationData()
+}, { immediate: true })
+
+// 模拟关联分析数据
+function generateCorrelationData(yAxisType: 'dayAheadPrice' | 'priceDiff', correlationVariable: string) {
+  const data = []
+  const dayTypes = ['工', '六', '日', '一', '节', '调']; // 示例数据，补充"一"
+  for (let i = 0; i < 50; i++) {
+    let xValue
+    // 根据关联变量类型生成模拟数据
+    if (['temperature', 'cloudCover', 'windSpeed', 'precipitation', 'radiation'].includes(correlationVariable)) {
+      xValue = Math.random() * 30 + 5 // 气象数据模拟
+    } else {
+      xValue = Math.random() * 50000 + 10000 // 负荷数据模拟
+    }
+    
+    const yValue = yAxisType === 'dayAheadPrice' ? Math.random() * 500 + 100 : Math.random() * 200 - 100 // 日前价或价差模拟
+    const dayType = dayTypes[Math.floor(Math.random() * dayTypes.length)]
+    const date = dayjs().subtract(Math.floor(Math.random() * 30), 'day').format('YYYY-MM-DD')
+    data.push([xValue, yValue, dayType, date]);
+  }
+  return data
+}
+
+function getXAxisName(variable: string): string {
+    switch(variable) {
+        case 'temperature': return '气温 (°C)';
+        case 'cloudCover': return '云量 (%)';
+        case 'windSpeed': return '风速 (m/s)';
+        case 'precipitation': return '降水量 (mm)';
+        case 'radiation': return '辐照 (W/m²)';
+        case 'dispatchLoad': return '统调负荷 (MW)';
+        case 'classBLoad': return 'B类负荷 (MW)';
+        case 'westLoad': return '西电负荷 (MW)';
+        default: return '关联变量';
+    }
+}
+
+function initOrUpdateScatterChart(
+  chartInstance: echarts.ECharts | null,
+  chartRef: HTMLElement | null,
+  data: any[],
+  title: string,
+  xAxisName: string,
+  yAxisName: string
+): echarts.ECharts | null {
+  if (!chartRef) return chartInstance;
+  let currentChart = chartInstance;
+  if (!currentChart) {
+    currentChart = echarts.init(chartRef);
+  }
+
+  const option = {
+    title: {
+      text: title,
+      left: 'center',
+      show: false // 主标题已在HTML中定义
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        const val = params.value;
+        return `${params.marker}<br/>
+                日期: ${val[3]}<br/>
+                日类型: ${val[2]}<br/>
+                ${xAxisName}: ${val[0].toFixed(2)}<br/>
+                ${yAxisName}: ${val[1].toFixed(2)} 元/MWh`;
+      }
+    },
+    grid: {
+        top: '10%',    // 顶部留白，可根据标题和图例调整
+        left: '12%',   // 左侧留白，为Y轴名称和刻度留出空间
+        right: '5%',   // 右侧留白
+        bottom: '18%', // 底部留白，为X轴名称、刻度和图例留出空间
+        containLabel: true // 防止标签溢出
+    },
+    xAxis: {
+      name: xAxisName,
+      type: 'value',
+      nameLocation: 'middle',
+      nameGap: 25
+    },
+    yAxis: {
+      name: yAxisName + ' (元/MWh)',
+      type: 'value',
+      nameLocation: 'middle',
+      nameGap: 40 // 适当调整Y轴名称与轴线的距离
+    },
+    visualMap: {
+        type: 'piecewise',
+        orient: 'horizontal',
+        left: 'center',
+        bottom: 10, // visualMap 放置在底部
+        pieces: [
+            { value: '一', label: '一', color: '#fc8452' },
+            { value: '六', label: '六', color: '#91cc75' },
+            { value: '工', label: '工', color: '#5470c6' },
+            { value: '日', label: '日', color: '#fac858' },
+            { value: '节', label: '节', color: '#ee6666' },
+            { value: '调', label: '调', color: '#73c0de' },
+        ],
+        seriesIndex: 0,
+        dimension: 2 // 数据格式为 [x, y, dayType, date]
+    },
+    series: [{
+      name: title,
+      type: 'scatter',
+      data: data,
+      symbolSize: 8,
+      animation: true,
+      animationDuration: 1000,
+      animationEasing: 'cubicOut',
+      animationDelay: (idx: number) => idx * 10
+    }]
+  };
+  currentChart.setOption(option);
+  // 显式调用resize确保图表根据容器尺寸更新
+  currentChart.resize(); 
+  return currentChart;
+}
+
+function updateDayAheadPriceScatter() {
+  const data = generateCorrelationData('dayAheadPrice', dayAheadPriceCorrelationVariable.value);
+  const xAxisName = getXAxisName(dayAheadPriceCorrelationVariable.value);
+  dayAheadPriceScatterChart = initOrUpdateScatterChart(
+    dayAheadPriceScatterChart,
+    dayAheadPriceScatterRef.value,
+    data,
+    '关联分析：日前价',
+    xAxisName,
+    '日前价'
+  );
+}
+
+function updatePriceDiffScatter() {
+  const data = generateCorrelationData('priceDiff', priceDiffCorrelationVariable.value);
+  const xAxisName = getXAxisName(priceDiffCorrelationVariable.value);
+  priceDiffScatterChart = initOrUpdateScatterChart(
+    priceDiffScatterChart,
+    priceDiffScatterRef.value,
+    data,
+    '关联分析：价差',
+    xAxisName,
+    '价差'
+  );
+}
+
+watch(dayAheadPriceCorrelationVariable, updateDayAheadPriceScatter);
+watch(priceDiffCorrelationVariable, updatePriceDiffScatter);
+
+function handleCorrelationChartsResize() {
+    dayAheadPriceScatterChart?.resize();
+    priceDiffScatterChart?.resize();
+}
 </script>
 
 <style scoped>
@@ -1355,120 +935,21 @@ onUnmounted(() => {
   height: 100%;
 }
 
-.global-filter-section {
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.filter-row {
-  display: flex;
-  margin-top: 16px;
-  gap: 24px;
-}
-
-.filter-item {
-  margin-right: 24px;
-}
-
-.filter-label {
-  font-weight: bold;
-  margin-bottom: 8px;
-  color: #303133;
-}
-
-.dimension-selector {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 12px;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  background-color: #ffffff;
-}
-
-.dimension-main-title {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  color: #303133;
-}
-
-.dimension-groups-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.dimension-group {
-  flex: 1;
-  min-width: 200px;
-  padding: 12px;
-  border-radius: 4px;
-  background-color: #f5f7fa;
-}
-
-.dimension-title {
-  font-weight: bold;
-  margin-bottom: 12px;
-  color: #409eff;
-  font-size: 14px;
-}
-
-.time-dimensions .dimension-title {
-  color: #409eff;
-}
-
-.weather-dimensions .dimension-title {
-  color: #e6a23c;
-}
-
-.load-dimensions .dimension-title {
-  color: #67c23a;
-}
-
-.other-dimensions .dimension-title {
-  color: #f56c6c;
-}
-
-.price-metric-selector {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  background-color: #ffffff;
-}
-
-.filter-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-
 .analysis-content {
   display: flex;
   flex: 1;
   overflow: auto;
   padding: 16px;
   gap: 16px;
-  height: calc(100vh - 300px);
+  height: calc(100vh - 50px);
 }
 
 .main-analysis-area {
-  flex: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0; /* 修复Flex子元素溢出问题 */
-}
-
-.secondary-analysis-area {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-width: 300px;
+  min-width: 0; /* 修复Flex子元素溢出问题 */
 }
 
 .analysis-card {
@@ -1506,7 +987,7 @@ onUnmounted(() => {
 
 .table-container {
   padding: 0 16px 16px;
-  height: 350px;
+  height: 650px;
 }
 
 .cell-high-positive {
@@ -1535,38 +1016,184 @@ onUnmounted(() => {
   color: #409eff;
 }
 
-/* KPI卡片样式 */
-.kpi-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 16px;
-}
-
-.kpi-card {
-  flex: 1;
-  min-width: 120px;
-  padding: 12px;
-  border-radius: 4px;
-  background-color: #f5f7fa;
-  text-align: center;
-}
-
-.kpi-title {
-  font-size: 14px;
-  color: #606266;
-  margin-bottom: 8px;
-}
-
-.kpi-value {
-  font-size: 18px;
-  font-weight: bold;
-  color: #303133;
-}
-
 /* 图表通用样式 */
 .chart {
   width: 100%;
   height: 100%;
+}
+
+/* 时点价差表样式 */
+.hourly-price-deviation-table {
+  .el-table {
+    margin-bottom: 8px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  .probability-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    
+    .el-input {
+      flex: 1;
+    }
+    
+    .el-button {
+      white-space: nowrap;
+    }
+  }
+}
+
+.date-range-selector {
+  margin-right: 16px;
+  
+  .el-date-editor {
+    width: 240px;
+  }
+}
+
+/* 价格偏差颜色样式 */
+:deep(.el-table .cell-positive-1) {
+  background-color: #ffcdd2 !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-positive-2) {
+  background-color: #ef9a9a !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-positive-3) {
+  background-color: #e57373 !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-positive-4) {
+  background-color: #ef5350 !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-positive-5) {
+  background-color: #d32f2f !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-negative-1) {
+  background-color: #c8e6c9 !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-negative-2) {
+  background-color: #a5d6a7 !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-negative-3) {
+  background-color: #81c784 !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-negative-4) {
+  background-color: #66bb6a !important;
+  color: #000000 !important;
+}
+
+:deep(.el-table .cell-negative-5) {
+  background-color: #2e7d32 !important;
+  color: #000000 !important;
+}
+
+/* 统计信息行样式 */
+:deep(.el-table__row:nth-last-child(-n+3)) {
+  background-color: #f5f7fa !important;
+}
+
+.probability-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  
+  :deep(.el-input) {
+    .el-input__wrapper {
+      background-color: #ffffff !important;
+    }
+    
+    .el-input__inner {
+      height: 24px;
+      line-height: 24px;
+      padding: 0 8px;
+      color: #000000 !important;
+      background-color: #ffffff !important;
+    }
+    
+    .el-input__inner::placeholder {
+      color: #909399;
+    }
+  }
+}
+
+/* 确保统计行的边框样式正确 */
+:deep(.el-table__row:last-child td) {
+  border-bottom: 1px solid #ebeef5;
+}
+
+/* 关联分析模块样式 */
+.correlation-analysis-section {
+  /* margin-top: 16px; */ /* 已在 analysis-card 中处理间距 */
+}
+
+.dual-scatter-container {
+  display: flex;
+  gap: 16px;
+  padding: 16px; /* 添加内边距 */
+}
+
+.scatter-chart-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e4e7ed; /* 添加边框 */
+  border-radius: 4px; /* 添加圆角 */
+  padding: 16px; /* 添加内边距 */
+}
+
+.chart-controls {
+  display: flex;
+  /* justify-content: space-between; */ /* 改为左对齐 */
+  justify-content: flex-start;
+  align-items: center;
+  /* padding: 8px; */ /* 已由 scatter-chart-box 控制 */
+  margin-bottom: 16px; /* 增加与图表标题的间距 */
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-label {
+  font-size: 14px; /* 调整字号 */
+  color: #606266; /* 调整颜色 */
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133; /* 调整颜色 */
+  margin-bottom: 8px;
+  text-align: center; /* 居中标题 */
+}
+
+.chart-explanation p {
+    margin: 4px 0; /* 调整段落间距 */
+}
+
+.chart-explanation strong {
+    color: #303133;
 }
 </style>
