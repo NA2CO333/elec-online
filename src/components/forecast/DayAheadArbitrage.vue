@@ -251,8 +251,33 @@ const getCellStyle = ({ row, column }: CellInfo) => {
   width: 200px;
 }
 
-:deep(.el-input__inner) {
-  color: #000000;
+:deep(.el-date-editor.el-input) {
+  .el-input__wrapper {
+    background-color: var(--el-bg-color);
+    border: 1px solid var(--el-border-color);
+    box-shadow: none;
+    
+    &:hover {
+      border-color: var(--el-border-color-hover);
+    }
+    
+    &.is-focus {
+      border-color: var(--el-color-primary);
+    }
+  }
+  
+  .el-input__inner {
+    color: #303133;
+    background-color: transparent;
+    height: 32px;
+    line-height: 32px;
+    font-size: 14px;
+  }
+  
+  .el-input__prefix,
+  .el-input__suffix {
+    color: var(--el-text-color-regular);
+  }
 }
 
 .file-actions {

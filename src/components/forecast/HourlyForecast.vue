@@ -30,7 +30,7 @@
           clearable
           class="total-mwh-input"
         >
-          <template #append>MWh</template>
+          <!-- <template #append>MWh</template> -->
         </el-input>
       </div>
     </div>
@@ -230,7 +230,21 @@ onMounted(async () => {
 }
 
 .total-mwh-input {
-  width: 230px;
+  width: 220px;
+}
+
+.total-mwh-input :deep(.el-input__wrapper) {
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  box-shadow: none;
+  
+  &:hover {
+    border-color: var(--el-border-color-hover);
+  }
+  
+  &.is-focus {
+    border-color: var(--el-color-primary);
+  }
 }
 
 .total-mwh-input :deep(.el-input__inner) {
@@ -238,19 +252,38 @@ onMounted(async () => {
   -webkit-text-fill-color: #303133;
 }
 
-:deep(.el-date-editor .el-input__wrapper) {
-  background-color: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
+.total-mwh-input :deep(.el-input__inner::placeholder) {
+  color: #909399;
+  -webkit-text-fill-color: #909399;
 }
 
-:deep(.el-date-editor .el-input__inner) {
-  color: #303133 !important;
-  -webkit-text-fill-color: #303133 !important;
-}
-
-:deep(.el-date-editor.is-focus .el-input__wrapper) {
-  box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
+:deep(.el-date-editor.el-input) {
+  .el-input__wrapper {
+    background-color: var(--el-bg-color);
+    border: 1px solid var(--el-border-color);
+    box-shadow: none;
+    
+    &:hover {
+      border-color: var(--el-border-color-hover);
+    }
+    
+    &.is-focus {
+      border-color: var(--el-color-primary);
+    }
+  }
+  
+  .el-input__inner {
+    color: #303133;
+    background-color: transparent;
+    height: 32px;
+    line-height: 32px;
+    font-size: 14px;
+  }
+  
+  .el-input__prefix,
+  .el-input__suffix {
+    color: var(--el-text-color-regular);
+  }
 }
 
 .forecast-table {

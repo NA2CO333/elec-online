@@ -226,46 +226,46 @@ onMounted(() => {
 }
 
 .standalone-date-picker-form-item {
-  padding: 10px;
-  margin-bottom: 0 !important;
-  display: flex;
-  flex-direction: column;
+  margin: 0;
+  margin-bottom: 20px;
 }
 
-.standalone-date-picker-form-item .date-range-picker {
-  width: 100%;
-}
-
-.date-range-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.date-preset-buttons {
-  margin-bottom: 10px;
+.standalone-date-picker-form-item :deep(.el-form-item__label) {
+  font-size: 14px;
+  color: #606266;
+  padding-right: 12px;
 }
 
 .date-picker {
-  width: 100%;
+  width: 200px;
 }
 
-.el-date-editor {
-  :deep(.el-input) {
-    .el-input__wrapper {
-      background-color: var(--el-bg-color);
-      border: 1px solid var(--el-border-color);
+:deep(.el-date-editor.el-input) {
+  .el-input__wrapper {
+    background-color: var(--el-bg-color);
+    border: 1px solid var(--el-border-color);
+    box-shadow: none;
+    
+    &:hover {
+      border-color: var(--el-border-color-hover);
     }
     
-    .el-input__inner {
-      color: #303133;
-      background-color: transparent;
+    &.is-focus {
+      border-color: var(--el-color-primary);
     }
-    
-    .el-input__prefix,
-    .el-input__suffix {
-      color: var(--el-text-color-regular);
-    }
+  }
+  
+  .el-input__inner {
+    color: #303133;
+    background-color: transparent;
+    height: 32px;
+    line-height: 32px;
+    font-size: 14px;
+  }
+  
+  .el-input__prefix,
+  .el-input__suffix {
+    color: var(--el-text-color-regular);
   }
 }
 
@@ -276,28 +276,6 @@ onMounted(() => {
       max-width: 220px;
     }
   }
-}
-
-/* 确保日期选择器内的文本可见 */
-:deep(.el-date-editor) {
-  .el-input__inner {
-    color: #303133 !important;
-    -webkit-text-fill-color: #303133 !important;
-  }
-  
-  .el-input__wrapper {
-    box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
-  }
-  
-  &.is-focus .el-input__wrapper {
-    box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
-  }
-}
-
-/* 占位符文本样式 */
-:deep(.el-input__inner::placeholder) {
-  color: var(--el-text-color-placeholder) !important;
-  -webkit-text-fill-color: var(--el-text-color-placeholder) !important;
 }
 
 .forecast-name-bold {
