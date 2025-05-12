@@ -32,7 +32,7 @@
         
         <!-- 单位说明 -->
         <div class="unit-note">
-          <span class="unit-label">电量单位：万千瓦时</span>
+          <span class="unit-label">电量单位：兆瓦时</span>
             </div>
         
         <!-- 汇总表格 -->
@@ -68,7 +68,7 @@
         
         <!-- 单位说明 -->
         <div class="unit-note">
-          <span class="unit-label">价格单位：元/千瓦时</span>
+          <span class="unit-label">价格单位：元/兆瓦时</span>
               </div>
         
         <!-- 按月份汇总表格 -->

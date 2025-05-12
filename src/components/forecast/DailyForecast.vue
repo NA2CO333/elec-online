@@ -1,186 +1,200 @@
 <template>
   <div class="daily-forecast">
-    <el-card class="forecast-card">
+    <!-- Removed main forecast card -->
+
+    <el-card class="forecast-card forecast-details-card">
       <template #header>
         <div class="card-header">
-          <span>日总电量预测</span>
+          <span>预测数据详情</span>
         </div>
       </template>
-      
-      <el-form :model="forecastParams" label-width="120px" class="forecast-form">
-        <el-form-item label="预测日期">
-          <el-date-picker 
-            v-model="forecastParams.date" 
-            type="date" 
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        
-        <el-form-item label="用户类型">
-          <el-select v-model="forecastParams.userType" placeholder="选择用户类型" clearable>
-            <el-option label="工业用户" value="industrial" />
-            <el-option label="商业用户" value="commercial" />
-            <el-option label="居民用户" value="residential" />
-            <el-option label="农业用户" value="agricultural" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="预测方法">
-          <el-radio-group v-model="forecastParams.method">
-            <el-radio label="lstm">LSTM深度学习</el-radio>
-            <el-radio label="xgboost">XGBoost</el-radio>
-            <el-radio label="arima">ARIMA时序分析</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button type="primary" @click="startForecast">开始预测</el-button>
+
+      <el-form-item label="预测标的日期" class="info-item standalone-date-picker-form-item">
+        <el-date-picker 
+          v-model="forecastParams.currentDate" 
+          type="date" 
+          placeholder="选择日期"
+          value-format="YYYY-MM-DD"
+          :disabled-date="disablePastDates"
+          @change="handleSingleDateChange"
+          class="el-date-editor el-date-editor--date date-picker"
+        />
+      </el-form-item>
+
+      <el-table :data="calculationTableData" stripe style="width: 100%">
+        <el-table-column prop="name" label="计算项目" width="180">
+          <template #default="scope">
+            <span :class="{ 'forecast-name-bold': scope.row.isForecast }">{{ scope.row.name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="值" width="180">
+          <template #default="scope">
+            <template v-if="scope.row.hasError">
+              <el-tooltip content="计算过程中出现错误" placement="top">
+                <el-icon class="error-icon"><Warning /></el-icon>
+              </el-tooltip>
+            </template>
+            <template v-else-if="scope.row.isForecast">
+              <span class="forecast-value">{{ scope.row.value }}</span>
+            </template>
+            <template v-else-if="scope.row.isInput && forecastResult.calculationItems">
+              <el-input 
+                v-model="forecastResult.calculationItems.manualAdjustmentAmount" 
+                placeholder="请输入调整量"
+                type="number"
+                size="small"
+                class="manual-adjustment-input-field"
+              />
+            </template>
+            <template v-else-if="scope.row.isInput && !forecastResult.calculationItems">
+               <el-input 
+                placeholder="-"
+                type="number"
+                size="small"
+                disabled
+                class="manual-adjustment-input-field"
+              />
+            </template>
+            <template v-else>
+              <span>{{ scope.row.value }}</span>
+            </template>
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="说明" />
+      </el-table>
+        <el-form-item class="button-form-item">
           <el-button @click="resetForm">重置参数</el-button>
         </el-form-item>
-      </el-form>
-      
-      <el-divider content-position="center">预测结果</el-divider>
-      
-      <div v-if="forecastResult.loading" class="result-loading">
-        <el-skeleton :rows="5" animated />
-      </div>
-      
-      <div v-else-if="forecastResult.data" class="forecast-result">
-        <el-descriptions title="预测结果详情" :column="2" border>
-          <el-descriptions-item label="预测日期">{{ forecastResult.data.date }}</el-descriptions-item>
-          <el-descriptions-item label="预测电量">{{ forecastResult.data.value }} 万千瓦时</el-descriptions-item>
-          <el-descriptions-item label="同比变化">
-            <span :class="forecastResult.data.yearChange >= 0 ? 'up' : 'down'">
-              {{ forecastResult.data.yearChange >= 0 ? '+' : '' }}{{ forecastResult.data.yearChange }}%
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="环比变化">
-            <span :class="forecastResult.data.monthChange >= 0 ? 'up' : 'down'">
-              {{ forecastResult.data.monthChange >= 0 ? '+' : '' }}{{ forecastResult.data.monthChange }}%
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="准确度区间" :span="2">
-            {{ forecastResult.data.minValue }} ~ {{ forecastResult.data.maxValue }} 万千瓦时 (置信度95%)
-          </el-descriptions-item>
-        </el-descriptions>
-        
-        <el-card class="historical-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>历史准确度</span>
-            </div>
-          </template>
-          <el-table :data="historyRecords" stripe style="width: 100%">
-            <el-table-column prop="date" label="日期" />
-            <el-table-column prop="forecast" label="预测值(万千瓦时)" />
-            <el-table-column prop="actual" label="实际值(万千瓦时)" />
-            <el-table-column prop="accuracy" label="准确率">
-              <template #default="scope">
-                <el-progress 
-                  :percentage="parseFloat(scope.row.accuracy)" 
-                  :status="scope.row.accuracy > 95 ? 'success' : scope.row.accuracy > 85 ? 'warning' : 'exception'"
-                />
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-        
-        <el-card class="suggestion-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>优化建议</span>
-            </div>
-          </template>
-          <ul class="suggestion-list">
-            <li v-for="(suggestion, index) in forecastResult.data.suggestions" :key="index">
-              {{ suggestion }}
-            </li>
-          </ul>
-        </el-card>
-      </div>
-      
-      <div v-else class="empty-result">
-        <el-empty description="暂无预测数据，请设置参数并点击开始预测" />
-      </div>
     </el-card>
+    
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { Calendar, DataAnalysis, Connection } from '@element-plus/icons-vue'
+import { reactive, computed, onMounted, watch } from 'vue'
+import { Warning } from '@element-plus/icons-vue'
+
+const getTomorrow = () => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.toISOString().slice(0, 10)
+}
 
 const forecastParams = reactive({
-  date: new Date().toISOString().slice(0, 10),
-  userType: '',
-  method: 'lstm'
+  currentDate: getTomorrow(), 
+})
+
+const getDefaultCalculationItems = () => ({
+  lastYearBaseValue: Math.floor(Math.random() * 1001) + 7000,
+  weightedGrowthRate: 2.5,
+  dayTypeCoefficient: 1.0,
+  forecast0: 0,
+  temperatureCoefficient: 1.0,
+  forecast1: 0,
+  monthlyCoefficient: 1.0,
+  forecast2: 0,
+  cloudCoverage: 30,
+  adjustmentAmount: 0,
+  sixDayOneCoefficient: 1.0,
+  photovoltaicAdjustment: 0,
+  forecast3: 0,
+  monthlyDecompositionAmount: 0,
+  forecast4: 0,
+  manualAdjustmentAmount: '',
+  forecast5: null
 })
 
 const forecastResult = reactive({
-  loading: false,
-  data: null
+  calculationItems: getDefaultCalculationItems(),
+  hasError: false
 })
 
-// 模拟历史数据
-const historyRecords = ref([
-  {
-    date: '2024-05-15',
-    forecast: '1238.5',
-    actual: '1252.7',
-    accuracy: '98.86'
-  },
-  {
-    date: '2024-05-14',
-    forecast: '1185.3',
-    actual: '1201.2',
-    accuracy: '98.68'
-  },
-  {
-    date: '2024-05-13',
-    forecast: '1302.7',
-    actual: '1247.6',
-    accuracy: '95.77'
-  },
-  {
-    date: '2024-05-12',
-    forecast: '1150.4',
-    actual: '1273.8',
-    accuracy: '90.31'
+const calculationTableData = computed(() => {
+  if (!forecastResult.calculationItems) return []
+  const items = forecastResult.calculationItems
+  const hasError = forecastResult.hasError
+  return [
+    { name: '去年基准值', value: items.lastYearBaseValue, description: '去年同期的日总电量', hasError: false, isForecast: false, isInput: false },
+    { name: '加权增长率', value: `${items.weightedGrowthRate}%`, description: '基于历史数据计算的加权增长率', hasError: false, isForecast: false, isInput: false },
+    { name: '日类型系数', value: items.dayTypeCoefficient, description: '根据日期类型(工作日/节假日)确定的系数', hasError: false, isForecast: false, isInput: false },
+    { name: '预测0', value: items.forecast0, description: '基于去年基准值、加权增长率和日类型系数的初步预测', hasError: hasError, isForecast: true, isInput: false },
+    { name: '气温系数', value: items.temperatureCoefficient, description: '基于气温预报计算的调整系数', hasError: false, isForecast: false, isInput: false },
+    { name: '预测1', value: hasError ? '-' : items.forecast1, description: '考虑气温因素后的预测值', hasError: hasError, isForecast: true, isInput: false },
+    { name: '月内系数', value: items.monthlyCoefficient, description: '月内电量分布特性系数', hasError: false, isForecast: false, isInput: false },
+    { name: '预测2', value: hasError ? '-' : items.forecast2, description: '考虑月内分布特性后的预测值', hasError: hasError, isForecast: true, isInput: false },
+    { name: '云量(%)', value: `${items.cloudCoverage}%`, description: '预测日的云量覆盖百分比', hasError: false, isForecast: false, isInput: false },
+    { name: '调整量', value: items.adjustmentAmount, description: '基于特殊事件的电量调整', hasError: false, isForecast: false, isInput: false },
+    { name: '六日一系数', value: items.sixDayOneCoefficient, description: '每周规律性调整系数', hasError: false, isForecast: false, isInput: false },
+    { name: '光伏调整量', value: items.photovoltaicAdjustment, description: '光伏发电影响的调整量', hasError: false, isForecast: false, isInput: false },
+    { name: '预测3', value: hasError ? '-' : items.forecast3, description: '考虑云量、特殊事件和周规律后的预测值', hasError: hasError, isForecast: true, isInput: false },
+    { name: '月分解量', value: items.monthlyDecompositionAmount, description: '月度计划分解到日的调整量', hasError: false, isForecast: false, isInput: false },
+    { name: '预测4', value: hasError ? '-' : items.forecast4, description: '考虑月计划分解后的预测值', hasError: hasError, isForecast: true, isInput: false },
+    { name: '手动调整量', value: items.manualAdjustmentAmount, description: '用户可输入需要调节的电量', hasError: false, isForecast: false, isInput: true },
+    { name: '预测5', value: hasError || items.forecast5 === null || items.forecast5 === undefined ? '-' : items.forecast5, description: '最终预测值 (预测4 + 手动调整量)', hasError: hasError, isForecast: true, isInput: false }
+  ]
+})
+
+const handleSingleDateChange = (newDate) => {
+  if (!newDate) {
+    forecastParams.currentDate = getTomorrow();
   }
-])
+}
 
-// 开始预测
-const startForecast = () => {
-  forecastResult.loading = true
-  
-  // 模拟API请求延迟
-  setTimeout(() => {
-    forecastResult.loading = false
-    forecastResult.data = {
-      date: forecastParams.date,
-      value: Math.floor(Math.random() * 500 + 1000),
-      yearChange: (Math.random() * 10 - 2).toFixed(2),
-      monthChange: (Math.random() * 5 - 1).toFixed(2),
-      minValue: Math.floor(Math.random() * 200 + 900),
-      maxValue: Math.floor(Math.random() * 200 + 1200),
-      suggestions: [
-        '建议根据预测结果，调整次日采购计划，优化成本结构',
-        '电量预计上升，建议提前准备应对高峰时段的负荷平衡',
-        '考虑与大型工业用户协商调整用电计划，优化电网资源分配',
-        '建议关注天气变化对电量预测的影响，适时调整预测模型参数'
-      ]
+const disablePastDates = (date) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date < today
+}
+
+const calculateForecastValues = (itemsToCalculateOn = forecastResult.calculationItems) => {
+  if (!itemsToCalculateOn) return
+  const items = itemsToCalculateOn
+  items.forecast0 = Math.floor(parseFloat(items.lastYearBaseValue) * (1 + parseFloat(items.weightedGrowthRate) / 100) * parseFloat(items.dayTypeCoefficient))
+  items.forecast1 = Math.floor(items.forecast0 * parseFloat(items.temperatureCoefficient))
+  items.forecast2 = Math.floor(items.forecast1 * parseFloat(items.monthlyCoefficient))
+  items.forecast3 = Math.floor((items.forecast2 + parseFloat(items.adjustmentAmount)) * parseFloat(items.sixDayOneCoefficient) + parseFloat(items.photovoltaicAdjustment))
+  items.forecast4 = items.forecast3 + parseFloat(items.monthlyDecompositionAmount)
+  const manualAdjustment = parseFloat(items.manualAdjustmentAmount)
+  if (!isNaN(manualAdjustment)) {
+    items.forecast5 = items.forecast4 + manualAdjustment
+  } else {
+    items.forecast5 = null
+  }
+}
+
+watch(() => forecastResult.calculationItems.manualAdjustmentAmount, () => {
+  if (forecastResult.calculationItems) {
+    calculateForecastValues()
+  }
+}, { deep: true })
+
+watch(() => forecastParams.currentDate, (newDateValue, oldDateValue) => {
+    if (!newDateValue) {
+        return; 
     }
-  }, 1500)
+
+    const newBase = getDefaultCalculationItems();
+    newBase.weightedGrowthRate = (Math.random() * 1 + 2.0).toFixed(2);
+    if (forecastResult.calculationItems) { 
+      newBase.manualAdjustmentAmount = forecastResult.calculationItems.manualAdjustmentAmount;
+    }
+    forecastResult.calculationItems = newBase;
+    calculateForecastValues();
+    forecastResult.hasError = Math.random() > 0.95;
+}, { immediate: false })
+
+const resetForm = () => {
+  forecastParams.currentDate = getTomorrow();
+  forecastResult.hasError = false;
+  if(forecastResult.calculationItems) {
+      forecastResult.calculationItems.manualAdjustmentAmount = '';
+  }
+  calculateForecastValues(); 
 }
 
-// 重置表单
-const resetForm = () => {
-  forecastParams.date = new Date().toISOString().slice(0, 10)
-  forecastParams.userType = ''
-  forecastParams.method = 'lstm'
-  forecastResult.data = null
-}
+onMounted(() => {
+  calculateForecastValues(forecastResult.calculationItems);
+})
 </script>
 
 <style scoped>
@@ -200,17 +214,103 @@ const resetForm = () => {
   font-weight: 500;
 }
 
+.calculation-details-title,
+.standalone-calculation-title {
+  display: none;
+}
+
 .forecast-form {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
+  padding: 0 10px; /* Add some padding for smaller screens */
 }
 
-.result-loading {
-  padding: 20px;
+.standalone-date-picker-form-item {
+  padding: 10px;
+  margin-bottom: 0 !important;
+  display: flex;
+  flex-direction: column;
 }
 
-.forecast-result {
-  margin-top: 20px;
+.standalone-date-picker-form-item .date-range-picker {
+  width: 100%;
+}
+
+.date-range-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.date-preset-buttons {
+  margin-bottom: 10px;
+}
+
+.date-picker {
+  width: 100%;
+}
+
+.el-date-editor {
+  :deep(.el-input) {
+    .el-input__wrapper {
+      background-color: var(--el-bg-color);
+      border: 1px solid var(--el-border-color);
+    }
+    
+    .el-input__inner {
+      color: #303133;
+      background-color: transparent;
+    }
+    
+    .el-input__prefix,
+    .el-input__suffix {
+      color: var(--el-text-color-regular);
+    }
+  }
+}
+
+.standalone-date-picker-form-item {
+  :deep(.el-form-item__content) {
+    .el-date-editor {
+      width: 100%;
+      max-width: 220px;
+    }
+  }
+}
+
+/* 确保日期选择器内的文本可见 */
+:deep(.el-date-editor) {
+  .el-input__inner {
+    color: #303133 !important;
+    -webkit-text-fill-color: #303133 !important;
+  }
+  
+  .el-input__wrapper {
+    box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
+  }
+  
+  &.is-focus .el-input__wrapper {
+    box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
+  }
+}
+
+/* 占位符文本样式 */
+:deep(.el-input__inner::placeholder) {
+  color: var(--el-text-color-placeholder) !important;
+  -webkit-text-fill-color: var(--el-text-color-placeholder) !important;
+}
+
+.forecast-name-bold {
+  font-weight: bold;
+}
+
+.forecast-value {
+  font-weight: bold;
+}
+
+.error-icon {
+  color: #F56C6C;
+  font-size: 20px;
 }
 
 .up {
@@ -223,7 +323,7 @@ const resetForm = () => {
 
 .historical-card,
 .suggestion-card {
-  margin-top: 20px;
+  /* margin-top: 20px; (Handled by grid gap) */
 }
 
 .suggestion-list {
@@ -233,5 +333,45 @@ const resetForm = () => {
 
 .empty-result {
   padding: 40px 0;
+}
+
+.details-empty-result {
+  margin-top: 0; /* Remove extra top margin if the details card is not shown */
+}
+
+.button-form-item {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.manual-adjustment-input-field :deep(.el-input__inner) {
+  color: #303133 !important; 
+  -webkit-text-fill-color: #303133 !important;
+}
+
+.manual-adjustment-input-field.is-disabled :deep(.el-input__inner) {
+  color: #a8abb2 !important; 
+  -webkit-text-fill-color: #a8abb2 !important;
+}
+
+@media (min-width: 768px) {
+  .standalone-date-picker-form-item {
+    flex-direction: row;
+    align-items: center; 
+  }
+  .standalone-date-picker-form-item .el-form-item__label {
+    margin-bottom: 0; 
+  }
+  .standalone-date-picker-form-item .el-form-item__content {
+    flex-grow: 1;
+  }
+  
+  .date-picker {
+    width: 220px; 
+  }
+
+  .button-form-item {
+    text-align: center; 
+  }
 }
 </style> 

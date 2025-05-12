@@ -1,333 +1,208 @@
 <template>
-  <div class="hourly-forecast">
-    <el-card class="forecast-card">
-      <template #header>
-        <div class="card-header">
-          <span>分时电量预测</span>
-        </div>
-      </template>
-      
-      <el-form :model="forecastParams" label-width="120px" class="forecast-form">
-        <el-form-item label="预测日期">
-          <el-date-picker 
-            v-model="forecastParams.date" 
-            type="date" 
-            placeholder="选择日期"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        
-        <el-form-item label="用户类型">
-          <el-select v-model="forecastParams.userType" placeholder="选择用户类型" clearable>
-            <el-option label="工业用户" value="industrial" />
-            <el-option label="商业用户" value="commercial" />
-            <el-option label="居民用户" value="residential" />
-            <el-option label="农业用户" value="agricultural" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="考虑天气因素">
-          <el-switch v-model="forecastParams.includeWeather" />
-        </el-form-item>
-        
-        <el-form-item label="预测方法">
-          <el-radio-group v-model="forecastParams.method">
-            <el-radio label="lstm">LSTM深度学习</el-radio>
-            <el-radio label="prophet">Prophet</el-radio>
-            <el-radio label="arima">ARIMA时序分析</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button type="primary" @click="startForecast">开始预测</el-button>
-          <el-button @click="resetForm">重置参数</el-button>
-        </el-form-item>
-      </el-form>
-      
-      <el-divider content-position="center">预测结果</el-divider>
-      
-      <div v-if="forecastResult.loading" class="result-loading">
-        <el-skeleton :rows="5" animated />
+  <el-card class="hourly-forecast-card">
+    <template #header>
+      <div class="card-header">
+        <span>分时电量预测</span>
       </div>
-      
-      <div v-else-if="forecastResult.data" class="forecast-result">
-        <div class="chart-container" ref="chartRef"></div>
-        
-        <el-table :data="forecastResult.data.hourly" stripe style="width: 100%; margin-top: 20px;">
-          <el-table-column prop="hour" label="时段" width="80" />
-          <el-table-column prop="forecast" label="预测电量(万千瓦时)" />
-          <el-table-column prop="lower" label="下限值(万千瓦时)" />
-          <el-table-column prop="upper" label="上限值(万千瓦时)" />
-          <el-table-column prop="price" label="预计电价(元/千瓦时)" />
-          <el-table-column prop="suggestion" label="建议">
-            <template #default="scope">
-              <el-tag :type="scope.row.tag">{{ scope.row.suggestion }}</el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
-        
-        <el-card class="analysis-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>预测分析</span>
-            </div>
-          </template>
-          <div class="analysis-content">
-            <h4>总体分析</h4>
-            <p>{{ forecastResult.data.analysis.overall }}</p>
-            
-            <h4>峰谷分析</h4>
-            <p>{{ forecastResult.data.analysis.peakValley }}</p>
-            
-            <h4>优化建议</h4>
-            <ul class="suggestion-list">
-              <li v-for="(suggestion, index) in forecastResult.data.analysis.suggestions" :key="index">
-                {{ suggestion }}
-              </li>
-            </ul>
-          </div>
-        </el-card>
-      </div>
-      
-      <div v-else class="empty-result">
-        <el-empty description="暂无预测数据，请设置参数并点击开始预测" />
-      </div>
-    </el-card>
-  </div>
+    </template>
+    
+    <el-form label-position="top" class="forecast-form">
+      <el-row :gutter="20">
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-form-item label="预测标的日期">
+            <el-date-picker 
+              v-model="selectedDate"
+              type="date" 
+              placeholder="选择日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              :disabled-date="disablePastDates"
+              @change="handleDateChange"
+              class="el-date-editor el-date-editor--date date-picker full-width-datepicker"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="8">
+          <el-form-item label="预测日总电量 (MWh)">
+            <el-input
+              v-model.number="predictedTotalMWh"
+              type="number"
+              placeholder="输入总电量"
+              clearable
+              class="total-mwh-input"
+            >
+              <template #append>MWh</template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+    
+    <el-divider />
+
+    <h4 class="table-title">分时电量预测表</h4>
+    <el-table :data="tableDisplayData" stripe border class="forecast-table" size="small">
+      <el-table-column prop="item" label="" width="80" fixed="left">
+        <template #default="scope">
+          <span class="item-label">{{ scope.row.item }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="dataSource" label="标的日期" width="100" align="center" header-align="center">
+        <template #default="scope">
+          <span :class="{ 'value-highlight': scope.row.item === '预测量' && scope.row.dataSource !== '-' }">
+            {{ scope.row.dataSource }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column
+        v-for="hour in 24"
+        :key="`hour-${hour - 1}`"
+        :prop="`h${hour - 1}`"
+        :label="`${hour - 1}时`"
+        width="59"
+        align="center"
+        header-align="center"
+      >
+        <template #default="scope">
+          <span :class="{ 'value-bold': scope.row.item === '预测量' && scope.row[`h${hour-1}`] !== '-' }">
+            {{ scope.row[`h${hour - 1}`] }}
+          </span>
+        </template>
+      </el-table-column>
+    </el-table>
+    <div v-if="!selectedDate || predictedTotalMWh === null || predictedTotalMWh === ''" class="empty-tip">
+      <el-empty description="请选择预测标的日期并输入预测日总电量以查看分时预测结果。" :image-size="100" />
+    </div>
+  </el-card>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { Calendar, DataAnalysis, Connection, Cpu } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { ElMessage } from 'element-plus';
 
-const chartRef = ref(null)
-const chartInstance = ref(null)
-
-const forecastParams = reactive({
-  date: new Date().toISOString().slice(0, 10),
-  userType: '',
-  includeWeather: true,
-  method: 'lstm'
-})
-
-const forecastResult = reactive({
-  loading: false,
-  data: null
-})
-
-// 初始化图表
-const initChart = (hourlyData) => {
-  if (chartInstance.value) {
-    chartInstance.value.dispose()
-  }
-  
-  if (!chartRef.value) return
-  
-  chartInstance.value = echarts.init(chartRef.value)
-  
-  const hours = hourlyData.map(item => item.hour)
-  const forecastValues = hourlyData.map(item => item.forecast)
-  const lowerValues = hourlyData.map(item => item.lower)
-  const upperValues = hourlyData.map(item => item.upper)
-  
-  const option = {
-    title: {
-      text: '24小时电量预测',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross'
-      }
-    },
-    legend: {
-      data: ['预测电量', '下限值', '上限值'],
-      bottom: 10
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: hours,
-      axisLabel: {
-        formatter: '{value}时'
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '电量(万千瓦时)',
-      axisLabel: {
-        formatter: '{value}'
-      }
-    },
-    series: [
-      {
-        name: '预测电量',
-        type: 'line',
-        data: forecastValues,
-        smooth: true,
-        lineStyle: {
-          width: 3,
-          color: '#409EFF'
-        },
-        itemStyle: {
-          color: '#409EFF'
-        },
-        emphasis: {
-          focus: 'series'
-        },
-        markPoint: {
-          data: [
-            { type: 'max', name: '最大值' },
-            { type: 'min', name: '最小值' }
-          ]
-        }
-      },
-      {
-        name: '下限值',
-        type: 'line',
-        data: lowerValues,
-        smooth: true,
-        lineStyle: {
-          width: 2,
-          type: 'dashed',
-          color: '#67C23A'
-        },
-        itemStyle: {
-          color: '#67C23A'
-        },
-        emphasis: {
-          focus: 'series'
-        }
-      },
-      {
-        name: '上限值',
-        type: 'line',
-        data: upperValues,
-        smooth: true,
-        lineStyle: {
-          width: 2,
-          type: 'dashed',
-          color: '#F56C6C'
-        },
-        itemStyle: {
-          color: '#F56C6C'
-        },
-        emphasis: {
-          focus: 'series'
-        }
-      }
-    ]
-  }
-  
-  chartInstance.value.setOption(option)
-  
-  // 自适应窗口大小
-  window.addEventListener('resize', handleResize)
+// --- Utility Functions ---
+function getTomorrow() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().slice(0, 10);
 }
 
-// 处理窗口大小变化
-const handleResize = () => {
-  chartInstance.value && chartInstance.value.resize()
+function disablePastDates(date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date.getTime() < today.getTime();
 }
 
-// 开始预测
-const startForecast = () => {
-  forecastResult.loading = true
-  
-  // 模拟API请求延迟
-  setTimeout(() => {
-    forecastResult.loading = false
-    
-    // 生成24小时预测数据
-    const hourlyData = []
-    for (let i = 0; i < 24; i++) {
-      const forecast = (Math.random() * 50 + 30).toFixed(2)
-      const variance = forecast * 0.15 // 15%的浮动范围
-      
-      let tag = 'info'
-      let suggestion = '正常用电'
-      
-      // 模拟不同时段的标签和建议
-      if (i >= 8 && i <= 11) {
-        tag = i >= 10 ? 'danger' : 'warning'
-        suggestion = i >= 10 ? '高峰管控' : '削峰建议'
-      } else if (i >= 13 && i <= 16) {
-        tag = i >= 15 ? 'danger' : 'warning'
-        suggestion = i >= 15 ? '高峰管控' : '削峰建议'
-      } else if (i >= 0 && i <= 5) {
-        tag = 'success'
-        suggestion = '低谷填谷'
-      }
-      
-      hourlyData.push({
-        hour: i.toString().padStart(2, '0'),
-        forecast: forecast,
-        lower: (forecast - variance * Math.random()).toFixed(2),
-        upper: (parseFloat(forecast) + variance * Math.random()).toFixed(2),
-        price: (Math.random() * 0.2 + 0.4).toFixed(3),
-        suggestion: suggestion,
-        tag: tag
-      })
+// --- Reactive State ---
+const selectedDate = ref(getTomorrow());
+const predictedTotalMWh = ref(null);
+const hourlyRatios = ref([]); // Array of 24 ratio numbers (0.0 to 1.0)
+
+// --- Mock Data Fetching ---
+async function mockFetchHourlyRatios(date) {
+  if (!date) {
+    return [];
+  }
+  await new Promise(resolve => setTimeout(resolve, 200)); 
+
+  // 使用图片中的实际比例数据
+  const ACTUAL_RATIOS = [
+    0.040, 0.039, 0.038, 0.037, 0.036, 0.036,  // 0-5
+    0.037, 0.0389, 0.0451, 0.0472, 0.0464, 0.0436,  // 6-11
+    0.0398, 0.0436, 0.0456, 0.0465, 0.0476, 0.0448,  // 12-17
+    0.0432, 0.0444, 0.043, 0.0408, 0.0389, 0.0374  // 18-23
+  ];
+
+  return ACTUAL_RATIOS;
+}
+
+// --- Computed Properties ---
+const hourlyForecasts = computed(() => {
+  if (
+    !selectedDate.value ||
+    predictedTotalMWh.value === null ||
+    predictedTotalMWh.value === '' ||
+    hourlyRatios.value.length !== 24
+  ) {
+    return Array(24).fill('-');
+  }
+  const total = typeof predictedTotalMWh.value === 'number' ? predictedTotalMWh.value : parseFloat(predictedTotalMWh.value);
+  if (isNaN(total)) {
+    return Array(24).fill('-');
+  }
+  return hourlyRatios.value.map(ratio => (total * ratio));
+});
+
+const tableDisplayData = computed(() => {
+  const data = [];
+
+  const ratioRow = { item: '曲线', dataSource: selectedDate.value || '-' };
+  const forecastRow = { 
+    item: '预测量', 
+    dataSource: (predictedTotalMWh.value !== null && predictedTotalMWh.value !== '') ? predictedTotalMWh.value.toFixed(1) : '-' 
+  };
+
+  const canCalculateForecasts = 
+    selectedDate.value &&
+    predictedTotalMWh.value !== null &&
+    predictedTotalMWh.value !== '' &&
+    !isNaN(parseFloat(predictedTotalMWh.value)) &&
+    hourlyRatios.value.length === 24;
+
+  for (let i = 0; i < 24; i++) {
+    if (selectedDate.value && hourlyRatios.value.length === 24) {
+      ratioRow[`h${i}`] = hourlyRatios.value[i].toFixed(4);  // 显示4位小数
+    } else {
+      ratioRow[`h${i}`] = '-';
     }
-    
-    forecastResult.data = {
-      date: forecastParams.date,
-      hourly: hourlyData,
-      analysis: {
-        overall: `预计${forecastParams.date}全天总用电量将达到${(hourlyData.reduce((sum, item) => sum + parseFloat(item.forecast), 0)).toFixed(2)}万千瓦时，整体负荷曲线呈现"双峰一谷"特征，早高峰出现在10-11时，晚高峰出现在15-18时，夜间低谷出现在2-5时。`,
-        peakValley: `当日峰谷差预计为${(Math.random() * 2 + 1.8).toFixed(2)}，较前一日${Math.random() > 0.5 ? '上升' : '下降'}${(Math.random() * 0.2).toFixed(2)}。最大负荷预计出现在${hourlyData.indexOf(hourlyData.reduce((prev, current) => (parseFloat(prev.forecast) > parseFloat(current.forecast)) ? prev : current))}时，最小负荷预计出现在${hourlyData.indexOf(hourlyData.reduce((prev, current) => (parseFloat(prev.forecast) < parseFloat(current.forecast)) ? prev : current))}时。`,
-        suggestions: [
-          '建议10-11时段和15-18时段主动削减非必要用电，避开高峰电价',
-          '夜间2-5时可安排增加用电负荷，利用低谷电价降低成本',
-          '可根据预测曲线合理安排生产计划，优化分时段用电结构',
-          '对于大型设备启停，建议避开负荷突变时段，保持电网稳定'
-        ]
-      }
+
+    if (canCalculateForecasts) {
+      forecastRow[`h${i}`] = hourlyForecasts.value[i].toFixed(1);  // 显示1位小数
+    } else {
+      forecastRow[`h${i}`] = '-';
     }
-    
-    // 初始化图表
-    initChart(hourlyData)
-  }, 1500)
-}
-
-// 重置表单
-const resetForm = () => {
-  forecastParams.date = new Date().toISOString().slice(0, 10)
-  forecastParams.userType = ''
-  forecastParams.includeWeather = true
-  forecastParams.method = 'lstm'
-  forecastResult.data = null
-}
-
-onMounted(() => {
-  // 组件挂载后，可以进行一些初始化操作
-})
-
-onUnmounted(() => {
-  // 组件卸载前，清理事件监听等资源
-  window.removeEventListener('resize', handleResize)
-  if (chartInstance.value) {
-    chartInstance.value.dispose()
-    chartInstance.value = null
   }
-})
+  data.push(ratioRow);
+  data.push(forecastRow);
+  return data;
+});
+
+// --- Watchers ---
+watch(selectedDate, async (newDate) => {
+  if (newDate) {
+    hourlyRatios.value = await mockFetchHourlyRatios(newDate);
+  } else {
+    hourlyRatios.value = [];
+  }
+}, { immediate: true });
+
+watch(predictedTotalMWh, (newValue) => {
+  if (newValue === '') {
+    // Allow user to clear the input
+  } else if (newValue !== null && isNaN(parseFloat(newValue))) {
+    ElMessage.warning('请输入有效的预测日总电量数值。');
+  }
+});
+
+// --- Event Handlers ---
+function handleDateChange(newDate) {
+  if (!newDate) {
+    selectedDate.value = null; 
+    hourlyRatios.value = [];
+  }
+}
+
+// --- Lifecycle Hooks ---
+onMounted(async () => {
+  if (selectedDate.value) {
+    hourlyRatios.value = await mockFetchHourlyRatios(selectedDate.value);
+  }
+});
+
 </script>
 
 <style scoped>
-.hourly-forecast {
-  width: 100%;
-}
-
-.forecast-card {
+.hourly-forecast-card {
   margin-bottom: 20px;
 }
 
@@ -335,50 +210,88 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .forecast-form {
-  max-width: 600px;
-  margin: 0 auto;
+  padding: 0 10px;
+  margin-bottom: 20px;
 }
 
-.result-loading {
-  padding: 20px;
+.full-width-datepicker {
+  width: 100% !important;
 }
 
-.forecast-result {
-  margin-top: 20px;
+:deep(.el-date-editor .el-input__wrapper) {
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
 }
 
-.chart-container {
-  height: 400px;
-  width: 100%;
+:deep(.el-date-editor .el-input__inner) {
+  color: #303133 !important;
+  -webkit-text-fill-color: #303133 !important;
 }
 
-.analysis-card {
-  margin-top: 20px;
+:deep(.el-date-editor.is-focus .el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
 }
 
-.analysis-content h4 {
-  margin-top: 15px;
-  margin-bottom: 10px;
-  font-size: 16px;
+.total-mwh-input :deep(.el-input__inner) {
   color: #303133;
+  -webkit-text-fill-color: #303133;
 }
 
-.analysis-content p {
-  line-height: 1.6;
+.forecast-table {
+  margin-top: 10px;
+  overflow-x: hidden;
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 500;
   margin-bottom: 15px;
+  padding-left: 10px;
 }
 
-.suggestion-list {
-  padding-left: 20px;
-  line-height: 1.8;
+.item-label {
+  font-weight: 500;
 }
 
-.empty-result {
-  padding: 40px 0;
+.value-bold {
+  font-weight: bold;
 }
+
+.value-highlight {
+  font-weight: bold;
+  color: var(--el-color-primary);
+}
+
+.empty-tip {
+  margin-top: 20px;
+}
+
+:deep(.el-table) {
+  font-size: 13px;
+  width: 100% !important;
+}
+
+:deep(.el-table th) {
+  background-color: #f5f7fa;
+  color: #606266;
+  font-weight: 500;
+  padding: 8px 0;
+}
+
+:deep(.el-table td) {
+  padding: 6px 0;
+}
+
+:deep(.el-table .cell) {
+  padding: 0 2px;
+  white-space: nowrap;
+  text-align: center;
+}
+
 </style> 
