@@ -321,11 +321,6 @@ onMounted(() => {
   color: #F56C6C;
 }
 
-.historical-card,
-.suggestion-card {
-  /* margin-top: 20px; (Handled by grid gap) */
-}
-
 .suggestion-list {
   padding-left: 20px;
   line-height: 1.8;

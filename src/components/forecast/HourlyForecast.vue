@@ -1,43 +1,40 @@
 <template>
   <el-card class="hourly-forecast-card">
-    <template #header>
-      <div class="card-header">
-        <span>分时电量预测</span>
+      <template #header>
+        <div class="card-header">
+          <span>分时电量预测</span>
+        </div>
+      </template>
+      
+    <div class="forecast-form">
+      <div class="form-row">
+        <div class="form-label">预测标的日期</div>
+        <el-date-picker 
+            v-model="selectedDate"
+          type="date" 
+          placeholder="选择日期"
+            format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
+            :disabled-date="disablePastDates"
+            @change="handleDateChange"
+            class="date-picker"
+        />
       </div>
-    </template>
-    
-    <el-form label-position="top" class="forecast-form">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-form-item label="预测标的日期">
-            <el-date-picker 
-              v-model="selectedDate"
-              type="date" 
-              placeholder="选择日期"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD"
-              :disabled-date="disablePastDates"
-              @change="handleDateChange"
-              class="el-date-editor el-date-editor--date date-picker full-width-datepicker"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-form-item label="预测日总电量 (MWh)">
-            <el-input
-              v-model.number="predictedTotalMWh"
-              type="number"
-              placeholder="输入总电量"
-              clearable
-              class="total-mwh-input"
-            >
-              <template #append>MWh</template>
-            </el-input>
-          </el-form-item>
-        </el-col>
-      </el-row>
-    </el-form>
-    
+      
+      <div class="form-row">
+        <div class="form-label">预测日总电量 (MWh)</div>
+        <el-input
+          v-model.number="predictedTotalMWh"
+          type="number"
+          placeholder="输入总电量"
+          clearable
+          class="total-mwh-input"
+        >
+          <template #append>MWh</template>
+        </el-input>
+      </div>
+    </div>
+      
     <el-divider />
 
     <h4 class="table-title">分时电量预测表</h4>
@@ -63,17 +60,14 @@
         align="center"
         header-align="center"
       >
-        <template #default="scope">
+            <template #default="scope">
           <span :class="{ 'value-bold': scope.row.item === '预测量' && scope.row[`h${hour-1}`] !== '-' }">
             {{ scope.row[`h${hour - 1}`] }}
           </span>
-        </template>
-      </el-table-column>
-    </el-table>
-    <div v-if="!selectedDate || predictedTotalMWh === null || predictedTotalMWh === ''" class="empty-tip">
-      <el-empty description="请选择预测标的日期并输入预测日总电量以查看分时预测结果。" :image-size="100" />
-    </div>
-  </el-card>
+            </template>
+          </el-table-column>
+        </el-table>
+    </el-card>
 </template>
 
 <script setup>
@@ -149,7 +143,7 @@ const tableDisplayData = computed(() => {
     !isNaN(parseFloat(predictedTotalMWh.value)) &&
     hourlyRatios.value.length === 24;
 
-  for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 24; i++) {
     if (selectedDate.value && hourlyRatios.value.length === 24) {
       ratioRow[`h${i}`] = hourlyRatios.value[i].toFixed(4);  // 显示4位小数
     } else {
@@ -181,7 +175,7 @@ watch(predictedTotalMWh, (newValue) => {
     // Allow user to clear the input
   } else if (newValue !== null && isNaN(parseFloat(newValue))) {
     ElMessage.warning('请输入有效的预测日总电量数值。');
-  }
+      }
 });
 
 // --- Event Handlers ---
@@ -219,8 +213,29 @@ onMounted(async () => {
   margin-bottom: 20px;
 }
 
-.full-width-datepicker {
-  width: 100% !important;
+.form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.form-label {
+  font-weight: 500;
+  margin-right: 15px;
+  min-width: 150px;
+}
+
+.date-picker {
+  width: 230px !important;
+}
+
+.total-mwh-input {
+  width: 230px;
+}
+
+.total-mwh-input :deep(.el-input__inner) {
+  color: #303133;
+  -webkit-text-fill-color: #303133;
 }
 
 :deep(.el-date-editor .el-input__wrapper) {
@@ -236,11 +251,6 @@ onMounted(async () => {
 
 :deep(.el-date-editor.is-focus .el-input__wrapper) {
   box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
-}
-
-.total-mwh-input :deep(.el-input__inner) {
-  color: #303133;
-  -webkit-text-fill-color: #303133;
 }
 
 .forecast-table {
