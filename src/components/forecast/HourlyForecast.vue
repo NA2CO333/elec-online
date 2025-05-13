@@ -19,19 +19,22 @@
             @change="handleDateChange"
             class="date-picker"
         />
-      </div>
-      
-      <div class="form-row">
-        <div class="form-label">预测日总电量 (MWh)</div>
+        <div class="form-label total-label">预测日总电量 (MWh)</div>
         <el-input
           v-model.number="predictedTotalMWh"
           type="number"
           placeholder="输入总电量"
           clearable
           class="total-mwh-input"
+        />
+        <el-button 
+          type="primary" 
+          class="export-btn"
+          @click="exportForecast"
+          :disabled="!hourlyForecasts.some(v => v !== '-')"
         >
-          <!-- <template #append>MWh</template> -->
-        </el-input>
+          导出预测量
+        </el-button>
       </div>
     </div>
       
@@ -73,6 +76,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import * as XLSX from 'xlsx';
 
 // --- Utility Functions ---
 function getTomorrow() {
@@ -186,6 +190,39 @@ function handleDateChange(newDate) {
   }
 }
 
+// --- Export Function ---
+function exportForecast() {
+  if (!hourlyForecasts.value.some(v => v !== '-')) {
+    ElMessage.warning('暂无可导出的预测数据');
+    return;
+  }
+
+  // 准备导出数据
+  const exportData = [
+    ['时间', '预测量(MWh)'], // 表头
+    ...hourlyForecasts.value.map((value, index) => [
+      `${index}时`,
+      value === '-' ? '' : Number(value).toFixed(1)
+    ])
+  ];
+
+  // 创建工作簿和工作表
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+  // 设置列宽
+  ws['!cols'] = [{ wch: 8 }, { wch: 12 }];
+
+  // 添加工作表到工作簿
+  XLSX.utils.book_append_sheet(wb, ws, '分时预测量');
+
+  // 生成文件名
+  const fileName = `分时预测量_${selectedDate.value}_${new Date().getTime()}.xlsx`;
+
+  // 导出文件
+  XLSX.writeFile(wb, fileName);
+}
+
 // --- Lifecycle Hooks ---
 onMounted(async () => {
   if (selectedDate.value) {
@@ -211,26 +248,33 @@ onMounted(async () => {
 .forecast-form {
   padding: 0 10px;
   margin-bottom: 20px;
+  position: relative;
 }
 
 .form-row {
   display: flex;
   align-items: center;
   margin-bottom: 20px;
+  position: relative;
+  width: 100%;
 }
 
 .form-label {
   font-weight: 500;
   margin-right: 15px;
-  min-width: 150px;
+  min-width: 100px;
+}
+
+.total-label {
+  margin-left: 30px;
 }
 
 .date-picker {
-  width: 230px !important;
+  width: 180px !important;
 }
 
 .total-mwh-input {
-  width: 220px;
+  width: 180px;
 }
 
 .total-mwh-input :deep(.el-input__wrapper) {
@@ -335,6 +379,11 @@ onMounted(async () => {
   padding: 0 2px;
   white-space: nowrap;
   text-align: center;
+}
+
+.export-btn {
+  position: absolute;
+  right: 0;
 }
 
 </style> 
