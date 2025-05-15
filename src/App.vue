@@ -59,7 +59,7 @@ const activeTopNav = ref('1')
 // 菜单标题和路由映射
 const menuTitleMap: Record<string, string> = {
   // 侧边栏一级菜单
-  '1': '用户档案',
+  '1': '客户档案',
   '2': '经纪人档案',
   '3': '客户分析',
   '4': '中长期交易',
@@ -70,11 +70,11 @@ const menuTitleMap: Record<string, string> = {
   '9': '系统设置',
   
   // 档案管理
-  '1-1': '用户档案',
+  '1-1': '客户档案',
   '1-2': '经纪人档案',
   
   // 客户分析
-  '2-1': '用户电量管理',
+  '2-1': '客户电量管理',
   '2-2': '电量偏差：预测vs实际',
   '2-3': '电量变化：现在vs从前',
   '2-4': '价格偏差：日前vs实时',
@@ -95,7 +95,7 @@ const menuTitleMap: Record<string, string> = {
   '5-1': '每日盈利、价格趋势',
   '5-2': '月度核心指标',
   '5-3': '月度成本构成与利润',
-  '5-4': '用户关联指标',
+  '5-4': '客户关联指标',
   
   // 客户数据
   '6-1': '客户购电合同条款',
@@ -170,7 +170,7 @@ const allMenuItems: Record<string, MenuItem[]> = {
       title: '档案管理',
       icon: 'Folder',
       children: [
-        { id: '1-1', title: '用户档案' },
+        { id: '1-1', title: '客户档案' },
         { id: '1-2', title: '经纪人档案' }
       ]
     }
@@ -182,7 +182,7 @@ const allMenuItems: Record<string, MenuItem[]> = {
       title: '客户分析',
       icon: 'DataAnalysis',
       children: [
-        { id: '2-1', title: '用户电量管理' },
+        { id: '2-1', title: '客户电量管理' },
         { id: '2-2', title: '电量偏差：预测vs实际' },
         { id: '2-3', title: '电量变化：现在vs从前' },
         { id: '2-4', title: '价格偏差：日前vs实时' },
@@ -221,7 +221,7 @@ const allMenuItems: Record<string, MenuItem[]> = {
         { id: '5-1', title: '每日盈利、价格趋势' },
         { id: '5-2', title: '月度核心指标' },
         { id: '5-3', title: '月度成本构成与利润' },
-        { id: '5-4', title: '用户关联指标' }
+        { id: '5-4', title: '客户关联指标' }
       ]
     }
   ],
@@ -802,7 +802,7 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
                             <el-icon><Folder /></el-icon>
                             档案管理
                           </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('1-1')">用户档案</div>
+                          <div class="third-menu-item" @click="handleSubMenuClick('1-1')">客户档案</div>
                           <div class="third-menu-item" @click="handleSubMenuClick('1-2')">经纪人档案</div>
                         </div>
                       </div>
@@ -820,7 +820,7 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
                             <el-icon><DataAnalysis /></el-icon>
                             客户分析
                           </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('2-1')">用户电量管理</div>
+                          <div class="third-menu-item" @click="handleSubMenuClick('2-1')">客户电量管理</div>
                           <div class="third-menu-item" @click="handleSubMenuClick('2-2')">电量偏差：预测vs实际</div>
                           <div class="third-menu-item" @click="handleSubMenuClick('2-3')">电量变化：现在vs从前</div>
                           <div class="third-menu-item" @click="handleSubMenuClick('2-4')">价格偏差：日前vs实时</div>
@@ -867,7 +867,7 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
                           <div class="third-menu-item" @click="handleSubMenuClick('5-1')">每日盈利、价格趋势</div>
                           <div class="third-menu-item" @click="handleSubMenuClick('5-2')">月度核心指标</div>
                           <div class="third-menu-item" @click="handleSubMenuClick('5-3')">月度成本构成与利润</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('5-4')">用户关联指标</div>
+                          <div class="third-menu-item" @click="handleSubMenuClick('5-4')">客户关联指标</div>
                         </div>
                       </div>
                       

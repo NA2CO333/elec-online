@@ -18,7 +18,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/user-archives',
     name: 'UserArchives',
     component: MenuView,
-    meta: { title: '用户档案' }
+    meta: { title: '客户档案' }
   },
   {
     path: '/broker-archives',
@@ -31,7 +31,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/user-electricity',
     name: 'UserElectricity',
     component: MenuView,
-    meta: { title: '用户电量管理' }
+    meta: { title: '客户电量管理' }
   },
   {
     path: '/consumption-deviation',
@@ -124,7 +124,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/user-related-metrics',
     name: 'UserRelatedMetrics',
     component: MenuView,
-    meta: { title: '用户关联指标' }
+    meta: { title: '客户关联指标' }
   },
   // 客户数据
   {

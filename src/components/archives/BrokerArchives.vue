@@ -55,6 +55,9 @@
           <el-button type="primary" @click="handleAdd" class="add-btn">
             <el-icon><Plus /></el-icon>添加经纪人
           </el-button>
+          <el-button type="success" @click="handleBatchImport" class="batch-import-btn">
+            <el-icon><Upload /></el-icon>批量导入
+          </el-button>
         </div>
       </div>
     </el-card>
@@ -407,6 +410,50 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 批量导入对话框 -->
+    <el-dialog
+      v-model="batchImportVisible"
+      title="批量导入经纪人"
+      width="500px"
+    >
+      <div class="batch-import-content">
+        <el-upload
+          class="batch-import-upload"
+          action="#"
+          :auto-upload="false"
+          :show-file-list="true"
+          :on-change="handleFileChange"
+          :on-remove="handleFileRemove"
+          accept=".xlsx,.xls"
+        >
+          <template #trigger>
+            <el-button type="primary">
+              <el-icon><Upload /></el-icon>选择文件
+            </el-button>
+          </template>
+          <template #tip>
+            <div class="el-upload__tip">
+              请上传Excel文件（.xlsx或.xls格式）
+              <el-link type="primary" :underline="true" @click="downloadTemplate">下载模板</el-link>
+            </div>
+          </template>
+        </el-upload>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchImportVisible = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="confirmBatchImport"
+            :disabled="!importFile"
+            :loading="importing"
+          >
+            开始导入
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -424,7 +471,8 @@ import {
   OfficeBuilding, 
   Location, 
   Phone, 
-  Message 
+  Message, 
+  Upload 
 } from '@element-plus/icons-vue'
 
 interface BrokerData {
@@ -552,6 +600,11 @@ const loading = ref(false)
 const selectedBrokers = ref<BrokerData[]>([])
 const currentPage = ref(1)
 const pageSize = ref(10)
+
+// 批量导入相关
+const batchImportVisible = ref(false)
+const importing = ref(false)
+const importFile = ref<File | null>(null)
 
 // 根据筛选条件过滤数据
 const filteredBrokerData = computed(() => {
@@ -835,6 +888,52 @@ const certificationTimeline = [
     size: 'small'
   }
 ]
+
+// 处理批量导入
+const handleBatchImport = () => {
+  batchImportVisible.value = true
+}
+
+// 处理文件变化
+const handleFileChange = (file: any) => {
+  importFile.value = file.raw
+}
+
+// 处理文件移除
+const handleFileRemove = () => {
+  importFile.value = null
+}
+
+// 下载模板
+const downloadTemplate = () => {
+  // 这里应该提供一个模板下载链接
+  ElMessage.info('模板下载功能开发中...')
+}
+
+// 确认批量导入
+const confirmBatchImport = async () => {
+  if (!importFile.value) return
+  
+  importing.value = true
+  try {
+    // 这里应该处理Excel文件的解析和数据导入
+    // 示例：模拟导入过程
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    ElMessage.success('批量导入成功')
+    batchImportVisible.value = false
+    importFile.value = null
+    
+    // 重新加载数据
+    loading.value = true
+    await new Promise(resolve => setTimeout(resolve, 500))
+    loading.value = false
+  } catch (error) {
+    ElMessage.error('导入失败，请检查文件格式是否正确')
+  } finally {
+    importing.value = false
+  }
+}
 
 // 页面加载
 onMounted(() => {
@@ -1199,5 +1298,25 @@ onMounted(() => {
 
 .enhanced-pagination :deep(.el-select .el-input .el-select__caret) {
   color: #606266;
+}
+
+/* 批量导入样式 */
+.batch-import-content {
+  padding: 20px;
+}
+
+.batch-import-upload {
+  text-align: center;
+}
+
+.el-upload__tip {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.batch-import-btn {
+  margin-left: 10px;
 }
 </style> 

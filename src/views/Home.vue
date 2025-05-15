@@ -13,8 +13,8 @@
             <div class="card-content">
               <p>九州能源售电系统提供全面的电力交易和能源管理解决方案，包含以下核心功能模块：</p>
               <ul>
-                <li><strong>业务档案管理：</strong>高效管理用户档案与经纪人信息，支持批量导入与灵活查询</li>
-                <li><strong>智能客户分析：</strong>多维度分析用户电量消耗模式和偏差情况，提供精准用电画像</li>
+                <li><strong>业务档案管理：</strong>高效管理客户档案与经纪人信息，支持批量导入与灵活查询</li>
+                <li><strong>智能客户分析：</strong>多维度分析客户电量消耗模式和偏差情况，提供精准用电画像</li>
                 <li><strong>中长期交易策略：</strong>合约统计分析、电力曲线精细化分解及批发交易复盘功能</li>
                 <li><strong>现货交易优化：</strong>基于AI的日总/分时电量预测和套利策略分析，提升交易效率</li>
                 <li><strong>经营数据分析：</strong>全方位盈利指标分析，支持多维度图表可视化展示</li>
@@ -36,7 +36,7 @@
             <div class="stats-container">
               <div class="stat-item">
                 <div class="stat-value">428</div>
-                <div class="stat-label">用户总数</div>
+                <div class="stat-label">客户总数</div>
               </div>
               <div class="stat-item">
                 <div class="stat-value">43</div>

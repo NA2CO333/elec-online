@@ -1,12 +1,12 @@
 <template>
     <div class="component-container">
-      <!-- 用户档案 -->
+      <!-- 客户档案 -->
       <component :is="UserArchives" v-if="routeName === 'UserArchives'" />
       
       <!-- 经纪人档案 -->
       <component :is="BrokerArchives" v-if="routeName === 'BrokerArchives'" />
       
-      <!-- 用户电量管理 -->
+      <!--客户电量管理 -->
       <component :is="UserElectricity" v-if="routeName === 'UserElectricity'" />
       
       <!-- 电量偏差：预测vs实际 -->
@@ -51,7 +51,7 @@
       <!-- 月度成本构成与利润分析 -->
       <component :is="MonthlyProfit" v-if="routeName === 'MonthlyProfit'" />
       
-      <!-- 用户关联指标 -->
+      <!-- 客户关联指标 -->
       <component :is="UserRelatedMetrics" v-if="routeName === 'UserRelatedMetrics'" />
       
       <!-- 客户购电合同条款 -->
