@@ -41,7 +41,7 @@
               </el-button>
               <el-button size="small" @click="manageCurves">
                 <el-icon><Setting /></el-icon> 管理曲线
-              </el-button>
+              </el-button> 
             </div>
           </el-col>
         </el-row>
@@ -49,58 +49,85 @@
         <!-- 选中曲线预览 -->
         <el-row v-if="selectedCurve">
           <el-col :span="24">
-          <div class="preview-tables-container">
-            <div class="preview-title">曲线权重表</div>
-            
-            <!-- 第一个表格：月份权重表 -->
-            <div class="weight-table-section">
-              <div class="weight-table-title">年分月</div>
-              <el-table :data="monthWeightData" border style="width: 100%; margin-bottom: 20px">
-                <el-table-column v-for="month in 12" :key="month" :prop="'month' + month" :label="month + '月'" align="center" />
-              </el-table>
-            </div>
+            <div class="preview-tables-container">
+              <div class="preview-header">
+                <div class="preview-title">曲线权重表</div>
+                <el-button
+                  type="text"
+                  class="collapse-button"
+                  @click="toggleCollapse"
+                  @keydown.enter.prevent="toggleCollapse"
+                  @keydown.space.prevent="toggleCollapse"
+                  :aria-expanded="!isCollapsed"
+                  :aria-controls="'weight-tables'"
+                  :title="isCollapsed ? '展开曲线权重表' : '折叠曲线权重表'"
+                  tabindex="0"
+                  role="button"
+                >
+                  <span class="collapse-text">{{ isCollapsed ? '展开' : '折叠' }}</span>
+                  <el-icon :class="{ 'is-collapsed': isCollapsed }">
+                    <ArrowDown />
+                  </el-icon>
+                  <span class="sr-only">{{ isCollapsed ? '展开' : '折叠' }}曲线权重表</span>
+                </el-button>
+              </div>
+              
+              <div v-show="!isCollapsed" 
+                   id="weight-tables" 
+                   class="weight-tables-content"
+                   :aria-hidden="isCollapsed"
+                   role="region"
+                   aria-label="曲线权重表详细信息">
+                <!-- 第一个表格：月份权重表 -->
+                <div class="weight-table-section">
+                  <div class="weight-table-title">年分月</div>
+                  <el-table :data="monthWeightData" border style="width: 100%; margin-bottom: 20px">
+                    <el-table-column v-for="month in 12" :key="month" :prop="'month' + month" :label="month + '月'" align="center" />
+                  </el-table>
+                </div>
 
-            <!-- 第二个表格：一月日期权重表 -->
-            <div class="weight-table-section">
-              <div class="weight-table-title">1月-月分日</div>
-              <el-table :data="januaryDayWeightData" border style="width: 100%; margin-bottom: 20px">
-                <el-table-column v-for="day in 31" :key="day" :prop="'day' + day" :label="day + '日'" align="center" />
-              </el-table>
-            </div>
+                <!-- 第二个表格：一月日期权重表 -->
+                <div class="weight-table-section">
+                  <div class="weight-table-title">1月-月分日</div>
+                  <el-table :data="januaryDayWeightData" border style="width: 100%; margin-bottom: 20px">
+                    <el-table-column v-for="day in 31" :key="day" :prop="'day' + day" :label="day + '日'" align="center" />
+                  </el-table>
+                </div>
 
-            <!-- 第三个表格：二月日期权重表 -->
-            <div class="weight-table-section">
-              <div class="weight-table-title">2月-月分日</div>
-              <el-table :data="februaryDayWeightData" border style="width: 100%; margin-bottom: 20px">
-                <el-table-column v-for="day in 28" :key="day" :prop="'day' + day" :label="day + '日'" align="center" />
-              </el-table>
-            </div>
+                <!-- 第三个表格：二月日期权重表 -->
+                <div class="weight-table-section">
+                  <div class="weight-table-title">2月-月分日</div>
+                  <el-table :data="februaryDayWeightData" border style="width: 100%; margin-bottom: 20px">
+                    <el-table-column v-for="day in 28" :key="day" :prop="'day' + day" :label="day + '日'" align="center" />
+                  </el-table>
+                </div>
 
-            <!-- 第四个表格：三至十二月日类型权重表 -->
-            <div class="weight-table-section">
-              <div class="weight-table-title">3-12月-月分日</div>
-              <el-table :data="otherMonthsDayTypeWeightData" border style="width: 100%; margin-bottom: 20px">
-                <el-table-column v-for="(dayType, index) in dayTypes" :key="index" :prop="'dayType' + index" :label="dayType" align="center" />
-              </el-table>
-            </div>
+                <!-- 第四个表格：三至十二月日类型权重表 -->
+                <div class="weight-table-section">
+                  <div class="weight-table-title">3-12月-月分日</div>
+                  <el-table :data="otherMonthsDayTypeWeightData" border style="width: 100%; margin-bottom: 20px">
+                    <el-table-column v-for="(dayType, index) in dayTypes" :key="index" :prop="'dayType' + index" :label="dayType" align="center" />
+                  </el-table>
+                </div>
 
-            <!-- 第五个表格：一、二月时段权重表 -->
-            <div class="weight-table-section">
-              <div class="weight-table-title">1-2月-日分时</div>
-              <el-table :data="janFebHourWeightData" border style="width: 100%; margin-bottom: 20px">
-                <el-table-column prop="dayType" label="日类型" width="80" align="center" fixed="left" />
-                <el-table-column v-for="hour in 24" :key="hour - 1" :prop="'hour' + (hour - 1)" :label="(hour - 1) + '时'" align="center" />
-              </el-table>
-            </div>
+                <!-- 第五个表格：一、二月时段权重表 -->
+                <div class="weight-table-section">
+                  <div class="weight-table-title">1-2月-日分时</div>
+                  <el-table :data="janFebHourWeightData" border style="width: 100%; margin-bottom: 20px">
+                    <el-table-column prop="dayType" label="日类型" width="80" align="center" fixed="left" />
+                    <el-table-column v-for="hour in 24" :key="hour - 1" :prop="'hour' + (hour - 1)" :label="(hour - 1) + '时'" align="center" />
+                  </el-table>
+                </div>
 
-            <!-- 第六个表格：三至十二月时段权重表 -->
-            <div class="weight-table-section">
-              <div class="weight-table-title">3-12月-日分时</div>
-              <el-table :data="otherMonthsHourWeightData" border style="width: 100%; margin-bottom: 20px">
-                <el-table-column prop="dayType" label="日类型" width="80" align="center" fixed="left" />
-                <el-table-column v-for="hour in 24" :key="hour - 1" :prop="'hour' + (hour - 1)" :label="(hour - 1) + '时'" align="center" />
-              </el-table>
-            </div>
+                <!-- 第六个表格：三至十二月时段权重表 -->
+                <div class="weight-table-section">
+                  <div class="weight-table-title">3-12月-日分时</div>
+                  <el-table :data="otherMonthsHourWeightData" border style="width: 100%; margin-bottom: 20px">
+                    <el-table-column prop="dayType" label="日类型" width="80" align="center" fixed="left" />
+                    <el-table-column v-for="hour in 24" :key="hour - 1" :prop="'hour' + (hour - 1)" :label="(hour - 1) + '时'" align="center" />
+                  </el-table>
+                </div>
+              </div>
             </div>
           </el-col>
         </el-row>
@@ -493,7 +520,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
-import { QuestionFilled, Upload, Download, Setting, Plus } from '@element-plus/icons-vue'
+import { QuestionFilled, Upload, Download, Setting, Plus, ArrowDown } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
@@ -1539,6 +1566,15 @@ onMounted(() => {
       }
     }, 500);
   })
+  
+  // 读取保存的折叠状态
+  const savedCollapsed = localStorage.getItem('curveWeightTableCollapsed')
+  if (savedCollapsed !== null) {
+    isCollapsed.value = savedCollapsed === 'true'
+  }
+  
+  // 添加键盘事件监听
+  document.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
@@ -1553,6 +1589,9 @@ onUnmounted(() => {
     resultChart.dispose()
     resultChart = null
   }
+  
+  // 移除键盘事件监听
+  document.removeEventListener('keydown', handleKeyDown)
 })
 
 // 执行分解
@@ -2149,6 +2188,24 @@ watch(timePointFilter, () => {
   // 更新图表
   updateDailyChart()
 }, { immediate: true })
+
+// 折叠状态变量 - 默认展开
+const isCollapsed = ref(false)
+
+// 切换折叠状态
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+  // 保存用户偏好
+  localStorage.setItem('curveWeightTableCollapsed', isCollapsed.value.toString())
+}
+
+// 键盘事件处理
+const handleKeyDown = (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    toggleCollapse()
+  }
+}
 </script>
 
 <style scoped>
@@ -2322,5 +2379,97 @@ watch(timePointFilter, () => {
 .custom-input-number :deep(.el-input__inner:focus) {
   background-color: #fff;
   border-color: #409EFF;
+}
+
+.collapse-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin: 0;
+  font-size: 14px;
+  color: #409EFF;
+  transition: all 0.3s ease;
+}
+
+.collapse-text {
+  font-size: 14px;
+  margin-right: 2px;
+}
+
+.collapse-button:hover {
+  color: #66b1ff;
+}
+
+.collapse-button:focus {
+  outline: none;
+}
+
+.collapse-button .el-icon {
+  transition: transform 0.3s ease;
+}
+
+.is-collapsed {
+  transform: rotate(-180deg);
+}
+
+.weight-tables-content {
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+  padding-left: 20px;
+}
+
+.weight-tables-content[aria-hidden="true"] {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.weight-tables-content[aria-hidden="false"] {
+  max-height: 3000px; /* 根据实际内容调整 */
+  opacity: 1;
+}
+
+.preview-tables-container {
+  background-color: #fff;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.weight-table-section {
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.weight-table-title {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #606266;
+  transition: all 0.3s ease;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.collapse-button:focus-visible {
+  outline: 2px solid #409EFF;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 </style> 
