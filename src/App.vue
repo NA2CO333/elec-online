@@ -4,6 +4,16 @@ import { useRouter, useRoute } from 'vue-router'
 import { Calendar, Plus } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
+// 导入新的菜单配置和辅助函数
+import {
+  type MenuItem as MenuConfigItem, // 类型重命名以避免与组件内的MenuItem冲突
+  menuData, // <--- 确保 menuData 被导入，如果辅助函数内部需要直接访问它
+  getTopNavItems,
+  getSidebarMenuItems as getConfigSidebarMenuItems, // 重命名导入的函数以避免与本地方法冲突
+  findMenuItemById,
+  findTopNavItemForMenu,
+  getAllSearchableMenuItems
+} from './config/menu' // 确保路径正确
 
 // 确保dayjs使用中文
 dayjs.locale('zh-cn')
@@ -11,312 +21,71 @@ dayjs.locale('zh-cn')
 // 定义标签页接口
 interface TabItem {
   title: string;
-  name: string;
+  name: string; // 使用菜单项的 id
   path: string;
 }
 
-// 定义搜索菜单项接口
-interface SearchMenuItem {
-  value: string;
-  menuId: string;
-  path: string;
-}
+// 定义搜索菜单项接口 (复用 getAllSearchableMenuItems 的返回类型)
+type SearchMenuItem = ReturnType<typeof getAllSearchableMenuItems>[0];
 
 const router = useRouter()
 const route = useRoute()
 
 // 搜索相关
 const searchText = ref('')
-const searchResults = ref<SearchMenuItem[]>([])
+// searchResults 将由 el-autocomplete 内部处理，我们主要提供 fetch-suggestions
 
 // 侧边栏折叠状态
 const isCollapse = ref(false)
 
 // 标签页列表
 const tabsList = ref<TabItem[]>([])
-const activeTabName = ref('')
+const activeTabName = ref('') // 对应菜单项的 id
 
-// 定义菜单项接口
-interface MenuItem {
-  id: string;
-  title: string;
-  icon?: string;
-  children?: MenuItem[];
+// // 定义菜单项接口 (现在从 config/menu.ts 导入 MenuConfigItem)
+// interface MenuItem { // 这个接口可以移除或保留，如果组件内部逻辑还需要特定结构
+//   id: string;
+//   title: string;
+//   icon?: string;
+//   children?: MenuItem[];
+// }
+
+// 顶部导航菜单项 (从配置生成)
+const topNavItems = computed<MenuConfigItem[]>(() => getTopNavItems())
+
+// 当前激活的顶部导航 (使用顶部导航项的 id)
+const activeTopNav = ref<string>(topNavItems.value.length > 0 ? topNavItems.value[0].id : '')
+
+// 这些函数直接在 <script setup> 的顶层作用域定义，它们会自动暴露给模板
+function getSidebarGroupsForTopNav(topNavId: string): MenuConfigItem[] {
+  return getConfigSidebarMenuItems(topNavId).filter(item => !item.isSingle && item.children && item.children.length > 0);
 }
 
-// 顶部导航菜单
-const topNavItems: MenuItem[] = [
-  { id: '1', title: '业务关系' },
-  { id: '2', title: '交易辅助' },
-  { id: '3', title: '数据汇报' },
-  { id: '4', title: '数据仓库' },
-  { id: '5', title: '系统管理' }
-]
-
-// 当前激活的顶部导航
-const activeTopNav = ref('1')
-
-// 菜单标题和路由映射
-const menuTitleMap: Record<string, string> = {
-  // 侧边栏一级菜单
-  '1': '客户档案',
-  '2': '经纪人档案',
-  '3': '客户分析',
-  '4': '中长期交易',
-  '5': '现货交易',
-  '6': '客户数据',
-  '7': '市场数据',
-  '8': '气象数据',
-  '9': '系统设置',
-  
-  // 档案管理
-  '1-1': '客户档案',
-  '1-2': '经纪人档案',
-  
-  // 客户分析
-  '2-1': '客户电量管理',
-  '2-2': '电量偏差：预测vs实际',
-  '2-3': '电量变化：现在vs从前',
-  '2-4': '价格偏差：日前vs实时',
-  '2-5': '价格变化：现在vs从前',
-
-  // 中长期交易
-  '3-1': '合约统计(按月)',
-  '3-2': '合约统计(按时)',
-  '3-3': '曲线分解',
-  '3-4': '批发交易复盘',
-  
-  // 现货交易
-  '4-1': '日总电量预测',
-  '4-2': '分时电量预测',
-  '4-3': '日前博弈套利',
-  
-  // 经营分析
-  '5-1': '每日盈利、价格趋势',
-  '5-2': '月度核心指标',
-  '5-3': '月度成本构成与利润',
-  '5-4': '客户关联指标',
-  
-  // 客户数据
-  '6-1': '客户购电合同条款',
-  '6-2': '客户增值服务合同条款',
-  '6-3': '客户电量数据',
-  
-  // 系统设置
-  '9-1': '系统日志',
-  '9-2': '权限管理',
-  '9-3': '安全提醒',
-  
-  // 日程管理
-  'schedule': '日程管理'
+function getSingleSidebarItemsForTopNav(topNavId: string): MenuConfigItem[] {
+  return getConfigSidebarMenuItems(topNavId).filter(item => item.isSingle);
 }
 
-// 菜单对应路由
-const menuRouteMap: Record<string, string> = {
-  // 档案管理
-  '1-1': '/user-archives',
-  '1-2': '/broker-archives',
-  
-  // 客户分析
-  '2-1': '/user-electricity',
-  '2-2': '/consumption-deviation',
-  '2-3': '/consumption-variation',
-  '2-4': '/price-deviation',
-  '2-5': '/price-variation',
-
-  // 中长期交易
-  '3-1': '/contract-statistics-month',
-  '3-2': '/contract-statistics-hour',
-  '3-3': '/curve-decomposition',
-  '3-4': '/wholesale-review',
-  
-  // 现货交易
-  '4-1': '/daily-forecast',
-  '4-2': '/hourly-forecast',
-  '4-3': '/day-ahead-arbitrage',
-  
-  // 经营分析
-  '5-1': '/dailyprofit',
-  '5-2': '/monthly-core-indicators',
-  '5-3': '/monthly-profit',
-  '5-4': '/user-related-metrics',
-  
-  // 客户数据
-  '6-1': '/customer-purchase-contract',
-  '6-2': '/customer-service-contract',
-  '6-3': '/customer-electricity-data',
-  
-  // 市场数据
-  '7': '/market-data',
-  
-  // 气象数据
-  '8': '/weather-data',
-  
-  // 系统设置
-  '9-1': '/system-log',
-  '9-2': '/permission-management',
-  '9-3': '/security-alerts',
-  
-  // 日程管理
-  'schedule': '/schedule-management'
-}
-
-// 侧边栏菜单数据
-const allMenuItems: Record<string, MenuItem[]> = {
-  // 业务关系
-  '1': [
-    {
-      id: '1',
-      title: '档案管理',
-      icon: 'Folder',
-      children: [
-        { id: '1-1', title: '客户档案' },
-        { id: '1-2', title: '经纪人档案' }
-      ]
-    }
-  ],
-  // 交易辅助
-  '2': [
-    {
-      id: '2',
-      title: '客户分析',
-      icon: 'DataAnalysis',
-      children: [
-        { id: '2-1', title: '客户电量管理' },
-        { id: '2-2', title: '电量偏差：预测vs实际' },
-        { id: '2-3', title: '电量变化：现在vs从前' },
-        { id: '2-4', title: '价格偏差：日前vs实时' },
-        { id: '2-5', title: '价格变化：现在vs从前' }
-      ]
-    },
-    {
-      id: '3',
-      title: '中长期交易',
-      icon: 'Operation',
-      children: [
-        { id: '3-1', title: '合约统计(按月)' },
-        { id: '3-2', title: '合约统计(按时)' },
-        { id: '3-3', title: '曲线分解' },
-        { id: '3-4', title: '批发交易复盘' }
-      ]
-    },
-    {
-      id: '4',
-      title: '现货交易',
-      icon: 'Money',
-      children: [
-        { id: '4-1', title: '日总电量预测' },
-        { id: '4-2', title: '分时电量预测' },
-        { id: '4-3', title: '日前博弈套利' }
-      ]
-    }
-  ],
-  // 数据汇报
-  '3': [
-    {
-      id: '5',
-      title: '经营分析',
-      icon: 'TrendCharts',
-      children: [
-        { id: '5-1', title: '每日盈利、价格趋势' },
-        { id: '5-2', title: '月度核心指标' },
-        { id: '5-3', title: '月度成本构成与利润' },
-        { id: '5-4', title: '客户关联指标' }
-      ]
-    }
-  ],
-  // 数据仓库
-  '4': [
-    {
-      id: '6',
-      title: '客户数据',
-      icon: 'User',
-      children: [
-        { id: '6-1', title: '客户购电合同条款' },
-        { id: '6-2', title: '客户增值服务合同条款' },
-        { id: '6-3', title: '客户电量数据' }
-      ]
-    },
-    {
-      id: '7',
-      title: '市场数据',
-      icon: 'PieChart',
-      children: []
-    },
-    {
-      id: '8',
-      title: '气象数据',
-      icon: 'Cloudy',
-      children: []
-    }
-  ],
-  // 系统管理
-  '5': [
-    {
-      id: '9',
-      title: '系统设置',
-      icon: 'Setting',
-      children: [
-        { id: '9-1', title: '系统日志' },
-        { id: '9-2', title: '权限管理' },
-        { id: '9-3', title: '安全提醒' }
-      ]
-    }
-  ]
-}
-
-// 当前显示的侧边栏菜单
-const menuItems = ref<MenuItem[]>(allMenuItems['1'])
-
-// 单独的菜单项（没有子菜单）
-const singleMenuItems = ref<MenuItem[]>([])
-
-// 构建所有可搜索的菜单项
-const allSearchableMenuItems = computed(() => {
-  const items: SearchMenuItem[] = []
-  
-  // 添加所有菜单项
-  Object.entries(menuTitleMap).forEach(([id, title]) => {
-    // 构建菜单路径描述
-    let path = ''
-    if (id.includes('-')) {
-      const [parentId, _] = id.split('-')
-      const topNavId = Object.keys(allMenuItems).find(key => {
-        return allMenuItems[key].some(menu => {
-          return menu.children?.some(subMenu => subMenu.id === id)
-        })
-      }) || ''
-      
-      if (topNavId) {
-        const topNavTitle = topNavItems.find(item => item.id === topNavId)?.title || ''
-        const parentMenu = allMenuItems[topNavId].find(menu => menu.children?.some(subMenu => subMenu.id === id))
-        if (parentMenu) {
-          path = `${topNavTitle} > ${parentMenu.title} > ${title}`
-        }
-      }
-    } else {
-      // 处理单独的菜单项（市场数据、气象数据等）
-      const topNavId = '4' // 它们在数据仓库下
-      const topNavTitle = topNavItems.find(item => item.id === topNavId)?.title || ''
-      path = `${topNavTitle} > ${title}`
-    }
-    
-    items.push({
-      value: title,
-      menuId: id,
-      path
-    })
-  })
-  
-  return items
+// 当前显示的侧边栏菜单 (有子菜单的)
+const sidebarPrimaryItems = computed<MenuConfigItem[]>(() => {
+  if (!activeTopNav.value) return []
+  return getSidebarGroupsForTopNav(activeTopNav.value)
 })
 
+// 当前显示的侧边栏单独菜单项 (没有子菜单的)
+const sidebarSingleItems = computed<MenuConfigItem[]>(() => {
+  if (!activeTopNav.value) return []
+  return getSingleSidebarItemsForTopNav(activeTopNav.value)
+})
+
+// 构建所有可搜索的菜单项 (从配置生成)
+const allSearchableMenuItems = computed(() => getAllSearchableMenuItems())
+
 // 搜索菜单项方法
-const queryMenuItems = (queryString: string, callback: (arg: SearchMenuItem[]) => void) => {
+const queryMenuItems = (queryString: string, callback: (results: SearchMenuItem[]) => void) => {
   if (queryString) {
     const results = allSearchableMenuItems.value.filter(item => {
       return item.value.toLowerCase().includes(queryString.toLowerCase()) ||
-             item.path.toLowerCase().includes(queryString.toLowerCase())
+             item.fullPathDescription.toLowerCase().includes(queryString.toLowerCase())
     })
     callback(results)
   } else {
@@ -325,112 +94,75 @@ const queryMenuItems = (queryString: string, callback: (arg: SearchMenuItem[]) =
 }
 
 // 处理搜索选择
-const handleSearchSelect = (item: SearchMenuItem) => {
-  const menuId = item.menuId
-  const path = menuRouteMap[menuId]
-  
-  if (path) {
-    // 找到对应的顶部导航并切换
-    const topNavId = findTopNavForMenu(menuId)
-      if (topNavId && topNavId !== activeTopNav.value) {
-      // 切换顶部导航，这会触发侧边栏菜单的更新
-        handleTopNavClick(topNavId)
-      }
+const handleSearchSelect = (selected: SearchMenuItem) => {
+  const menuItem = findMenuItemById(selected.menuId)
+  if (menuItem && menuItem.path) {
+    const topNavItem = findTopNavItemForMenu(menuItem.id)
+    if (topNavItem && topNavItem.id !== activeTopNav.value) {
+      handleTopNavClick(topNavItem.id) // 会触发侧边栏更新
+    }
     
-    // 设置激活的菜单
-    activeMenu.value = menuId
-    
-    // 添加标签并导航
-    addTab(menuId)
-    router.push(path)
-    searchText.value = '' // 清空搜索框
+    activeMenu.value = menuItem.id
+    addTab(menuItem.id)
+    router.push(menuItem.path)
+    searchText.value = ''
   }
 }
 
-// 处理顶部导航菜单点击
-const handleTopNavClick = (index: string): void => {
-  activeTopNav.value = index
+// 处理顶部导航菜单点击 (command 为顶部导航项的 id)
+const handleTopNavClick = (navId: string): void => {
+  activeTopNav.value = navId
   
-  // 更新侧边栏菜单
-  menuItems.value = allMenuItems[index]
-  
-  // 过滤出单独的菜单项
-  updateSingleMenuItems()
-  
+  // 侧边栏菜单会通过 computed 属性自动更新
   // 更新默认展开的菜单
   updateDefaultOpeneds()
   
-  // 如果不是从子菜单点击过来的，可以重置当前激活的菜单项
-  // 如果是从子菜单点击过来的，则保持该子菜单激活状态
-  if (!activeMenu.value || !findMenuInTopNav(activeMenu.value, index)) {
-  activeMenu.value = ''
-  }
-}
-
-// 检查菜单项是否在指定的顶部导航下
-const findMenuInTopNav = (menuId: string, topNavId: string): boolean => {
-  // 检查单独的菜单项
-  if (topNavId === '4' && ['7', '8'].includes(menuId)) {
-    return true
-  }
-  
-  // 检查带子菜单的菜单项
-  return allMenuItems[topNavId].some(menu => {
-    return menu.id === menuId || (menu.children && menu.children.some(subMenu => subMenu.id === menuId))
-  })
-}
-
-// 处理子菜单点击
-const handleSubMenuClick = (menuId: string): void => {
-  // 根据菜单ID找到对应的顶部导航
-  const topNavId = findTopNavForMenu(menuId)
-  
-  // 如果找到了顶部导航且与当前激活的不同，则切换顶部导航
-  if (topNavId && topNavId !== activeTopNav.value) {
-    handleTopNavClick(topNavId)
-  }
-  
-  // 设置activeMenu，以便高亮显示
-  activeMenu.value = menuId
-  
-  // 根据菜单ID导航到对应路由
-  const route = menuRouteMap[menuId]
-  if (route) {
-    addTab(menuId)
-    router.push(route)
-  }
-}
-
-// 根据菜单ID找到对应的顶部导航
-const findTopNavForMenu = (menuId: string): string | null => {
-  // 处理特殊情况：市场数据和气象数据
-  if (['7', '8'].includes(menuId)) {
-    return '4' // 数据仓库
-  }
-  
-  // 对于其他菜单项，查找对应的顶部导航
-  for (const [navId, menus] of Object.entries(allMenuItems)) {
-    for (const menu of menus) {
-      // 检查一级菜单
-      if (menu.id === menuId) {
-        return navId
-      }
-      
-      // 检查二级菜单
-      if (menu.children) {
-        for (const subMenu of menu.children) {
-          if (subMenu.id === menuId) {
-            return navId
+  // 如果当前激活的子菜单不属于新的 topNav，则清空
+  if (activeMenu.value) {
+    const currentActiveMenuItem = findMenuItemById(activeMenu.value)
+    if (!currentActiveMenuItem || currentActiveMenuItem.topNavId !== navId) {
+      // 尝试激活新 topNav 下的第一个可点击菜单，或清空
+      const firstNavigableItem = getConfigSidebarMenuItems(navId).find(m => m.path || (m.children && m.children.find(sm => sm.path)));
+      if (firstNavigableItem) {
+          if (firstNavigableItem.path) {
+              // activeMenu.value = firstNavigableItem.id; // 不立即设置，让路由守卫处理
+          } else if (firstNavigableItem.children && firstNavigableItem.children[0]?.path) {
+              // activeMenu.value = firstNavigableItem.children[0].id; // 不立即设置
+          } else {
+            activeMenu.value = '';
           }
-        }
+      } else {
+        activeMenu.value = ''
       }
     }
   }
-  
-  return null
 }
 
-// 定义日程事件接口
+// 检查菜单项是否在指定的顶部导航下 (已通过 findTopNavItemForMenu 替代部分逻辑)
+// findMenuInTopNav 函数可以简化或移除，因为现在可以直接比较 menuItem.topNavId
+
+// 处理子菜单点击 (menuId 是子菜单项的 id)
+const handleSubMenuClick = (menuId: string): void => {
+  const menuItem = findMenuItemById(menuId)
+  if (menuItem && menuItem.path) {
+    const topNavItem = findTopNavItemForMenu(menuItem.id)
+    if (topNavItem && topNavItem.id !== activeTopNav.value) {
+      // 如果顶部导航不一致，则切换，这会触发侧边栏等更新
+      // 注意：这里不直接调用 handleTopNavClick，因为activeMenu的设置和路由跳转应该基于当前点击的子菜单
+      activeTopNav.value = topNavItem.id; 
+    }
+    
+    activeMenu.value = menuItem.id
+    addTab(menuItem.id)
+    router.push(menuItem.path)
+  } else if (menuItem && !menuItem.path && menuItem.children && menuItem.children.length > 0) {
+    // 如果是父菜单项且没有直接路径，可以考虑展开它，或者导航到第一个子项
+    // 当前 el-menu 的行为是展开，所以这里可以不特殊处理导航
+    activeMenu.value = menuItem.id; // 仅高亮父菜单
+  }
+}
+
+// 定义日程事件接口 (保持不变)
 interface ScheduleEvent {
   id: string;
   title: string;
@@ -440,21 +172,223 @@ interface ScheduleEvent {
   description?: string;
 }
 
-// 引用日程组件
+// 引用日程组件 (保持不变)
 const scheduleRef = ref(null)
-
-// 获取最新日程
 const latestSchedule = ref<ScheduleEvent | null>(null)
 
-// 打开添加日程对话框
 const openAddSchedule = () => {
-  // 添加标签并导航到日程管理
-  const menuId = 'schedule'
-  addTab(menuId)
-  router.push('/schedule-management')
+  const scheduleMenuItem = findMenuItemById('schedule');
+  if (scheduleMenuItem && scheduleMenuItem.path) {
+    addTab(scheduleMenuItem.id);
+    router.push(scheduleMenuItem.path);
+  }
+}
+// (loadLatestSchedule, formatScheduleTime 保持不变)
+// ... (此处省略 loadLatestSchedule, formatScheduleTime 的代码，它们与菜单不直接相关)
+
+// 当前激活的菜单项 (侧边栏中具体激活的菜单项 id)
+const activeMenu = ref('') 
+// 默认展开的菜单 (侧边栏一级菜单的 id 列表)
+const defaultOpeneds = ref<string[]>([])
+
+// 更新默认展开的菜单 (基于当前显示的侧边栏主菜单)
+const updateDefaultOpeneds = (): void => {
+  defaultOpeneds.value = sidebarPrimaryItems.value.map(item => item.id)
 }
 
-// 从本地存储加载最新日程
+// 处理侧边菜单点击 (index 是菜单项的 id)
+const handleMenuClick = (index: string): void => {
+   const menuItem = findMenuItemById(index)
+  if (menuItem) {
+    activeMenu.value = menuItem.id
+
+    // 如果点击的是父菜单项且它没有直接的 path，则不导航
+    if (!menuItem.path && menuItem.children && menuItem.children.length > 0) {
+        // el-menu 会自动处理展开/折叠，这里不需要额外操作
+        return;
+    }
+
+    if (menuItem.path) {
+      // 确保顶部导航栏也同步 (如果需要)
+      const topNavItem = findTopNavItemForMenu(menuItem.id)
+      if (topNavItem && topNavItem.id !== activeTopNav.value) {
+        activeTopNav.value = topNavItem.id // 更新顶部导航，侧边栏会自动响应
+      }
+      addTab(menuItem.id)
+      router.push(menuItem.path)
+    } else if (index === '0' || index === '') { // 假设 '0' 或空字符串代表首页
+      goHome();
+    }
+  }
+}
+
+// 添加标签页
+const addTab = (menuId: string): void => {
+  const menuItem = findMenuItemById(menuId)
+  if (!menuItem || !menuItem.path || !menuItem.title) return
+  
+  const existingTab = tabsList.value.find(tab => tab.name === menuItem.id)
+  if (!existingTab) {
+    tabsList.value.push({
+      title: menuItem.title,
+      name: menuItem.id,
+      path: menuItem.path
+    })
+  }
+  activeTabName.value = menuItem.id
+}
+
+// 移除标签页 (逻辑基本不变，但确保路径来自 tab 对象)
+const removeTab = (targetName: string): void => {
+  const tabs = tabsList.value
+  let newActiveName = activeTabName.value
+  
+  if (newActiveName === targetName) {
+    tabs.forEach((tab, index) => {
+      if (tab.name === targetName) {
+        const nextTab = tabs[index + 1] || tabs[index - 1]
+        if (nextTab) {
+          newActiveName = nextTab.name
+        } else {
+          newActiveName = '' // 没有其他tab了
+        }
+      }
+    })
+  }
+  
+  tabsList.value = tabs.filter(tab => tab.name !== targetName)
+  activeTabName.value = newActiveName
+  
+  if (newActiveName) {
+    const activeTabInfo = tabsList.value.find(tab => tab.name === newActiveName)
+    if (activeTabInfo) {
+      router.push(activeTabInfo.path)
+      activeMenu.value = newActiveName // 同步侧边栏激活状态
+    }
+  } else {
+    goHome() // 如果没有标签了，导航到首页
+  }
+}
+
+// 点击标签页 (逻辑不变)
+const clickTab = (tab: any): void => { // tab 类型是 Element Plus 的 TabPaneProps
+  const targetTab = tabsList.value.find(item => item.name === tab.props.name)
+  if (targetTab) {
+    router.push(targetTab.path)
+    activeMenu.value = targetTab.name // 同步侧边栏
+    // 可能需要同步顶部导航
+    const menuItem = findMenuItemById(targetTab.name);
+    if (menuItem) {
+        const topNav = findTopNavItemForMenu(menuItem.id);
+        if (topNav && topNav.id !== activeTopNav.value) {
+            activeTopNav.value = topNav.id;
+        }
+    }
+  }
+}
+
+// 处理首页点击
+const goHome = (): void => {
+  activeMenu.value = '' // 首页通常没有特定激活菜单，或者你可以定义一个 'home' id
+  if (topNavItems.value.length > 0) {
+    activeTopNav.value = topNavItems.value[0].id // 默认选中第一个顶部导航
+  }
+  // 侧边栏菜单会通过 computed 属性自动更新
+  updateDefaultOpeneds()
+  activeTabName.value = '' // 清除标签页列表中的激活状态
+  tabsList.value = [] // 清空所有标签页
+  router.push('/')
+}
+
+// 处理退出登录 (逻辑不变)
+const handleLogout = (): void => {
+  alert('退出登录功能开发中')
+}
+
+// 侧边栏折叠切换 (逻辑不变)
+const toggleCollapse = (): void => {
+  isCollapse.value = !isCollapse.value
+}
+
+// 监听路由变化，添加标签页并更新导航状态
+watch(() => route.path, (newPath) => {
+  if (newPath === '/') {
+    goHome() // 如果是首页，执行 goHome 逻辑
+    return;
+  }
+
+  let currentMenuId = '';
+  let correspondingMenuItem: MenuConfigItem | undefined;
+
+  // 尝试从所有可导航菜单中找到匹配当前路径的项
+  // getAllSearchableMenuItems 包含了所有可导航的菜单项及其路径
+  const searchableItems = getAllSearchableMenuItems(); // 使用辅助函数获取扁平化的菜单列表
+  const matchedItemFromSearch = searchableItems.find(item => item.path === newPath);
+
+  if (matchedItemFromSearch) {
+      correspondingMenuItem = findMenuItemById(matchedItemFromSearch.menuId);
+  } else {
+      // Fallback: 如果在 searchableItems 中未直接找到，尝试遍历原始 menuData (可能包含未在搜索中配置的路径)
+      function findByPath(items: MenuConfigItem[]): MenuConfigItem | undefined {
+          for (const item of items) {
+              if (item.path === newPath) return item;
+              if (item.children) {
+                  const found = findByPath(item.children);
+                  if (found) return found;
+              }
+          }
+          return undefined;
+      }
+      correspondingMenuItem = findByPath(menuData.filter(item => item.path || (item.children && item.children.some(c => c.path))));
+  }
+
+
+  if (correspondingMenuItem) {
+    currentMenuId = correspondingMenuItem.id;
+    addTab(currentMenuId);
+    activeMenu.value = currentMenuId;
+
+    const topNavItem = findTopNavItemForMenu(currentMenuId);
+    if (topNavItem && topNavItem.id !== activeTopNav.value) {
+      activeTopNav.value = topNavItem.id;
+      // 侧边栏菜单 (sidebarPrimaryItems, sidebarSingleItems) 会自动更新
+      updateDefaultOpeneds();
+    } else if (!topNavItem && correspondingMenuItem.id === 'schedule' && activeTopNav.value) {
+        // 如果是日程管理这类独立菜单，它可能不属于任何顶部导航
+        // 此时可以不清空 activeTopNav，或者根据业务逻辑决定是否要切换到一个默认导航
+    }
+  } else {
+    // 如果没有找到匹配的菜单项 (例如，直接访问了一个未在菜单中定义的路由)
+    // 可以选择清空激活状态或保持不变，或导航到404
+    // activeMenu.value = '';
+    // activeTopNav.value = topNavItems.value.length > 0 ? topNavItems.value[0].id : ''; // 回到默认
+  }
+}, { immediate: true })
+
+
+// 初始化
+onMounted(() => {
+  // updateSingleMenuItems() // 这个函数的功能已合并到 computed properties
+  if (topNavItems.value.length > 0 && !activeTopNav.value) {
+      activeTopNav.value = topNavItems.value[0].id;
+  }
+  updateDefaultOpeneds(); // 初始化时也需要设置默认展开
+  loadLatestSchedule();
+  
+  setInterval(() => {
+    loadLatestSchedule()
+  }, 60000)
+})
+
+// // getSingleMenuItems 函数可以移除，其功能由 sidebarSingleItems 计算属性提供
+// const getSingleMenuItems = (topNavId: string): MenuConfigItem[] => { ... }
+
+// --- 原有的 menuTitleMap, menuRouteMap, allMenuItems, topNavItems(静态) 已被移除 ---
+// --- 原有的 updateSingleMenuItems 函数逻辑已合并到 computed properties ---
+// --- 原有的 findTopNavForMenu 函数已被新的辅助函数替代 ---
+// --- 原有的 menuTitleMap 和 menuRouteMap 的使用已改为直接从 MenuItem 对象获取 title 和 path ---
+
+// (此处省略 loadLatestSchedule, formatScheduleTime 的具体实现，假设它们保持不变)
 const loadLatestSchedule = () => {
   const savedSchedules = localStorage.getItem('schedules')
   if (savedSchedules) {
@@ -469,7 +403,6 @@ const loadLatestSchedule = () => {
       const endOfDay = new Date(today)
       endOfDay.setHours(23, 59, 59, 999)
       
-      // 优先获取今天的日程
       const todayEvents = schedules
         .filter((event: any) => {
           const eventTime = new Date(event.time)
@@ -477,9 +410,7 @@ const loadLatestSchedule = () => {
         })
         .sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime())
       
-      // 如果今天没有日程，则获取未来最近的日程
       if (todayEvents.length > 0) {
-        // 获取今天最早的未开始日程，如果没有则获取最晚的已开始日程
         const currentTime = new Date()
         const upcomingTodayEvents = todayEvents.filter((e: any) => new Date(e.time) >= currentTime)
         const latestEvent = upcomingTodayEvents.length > 0 ? 
@@ -488,7 +419,6 @@ const loadLatestSchedule = () => {
           
         latestSchedule.value = latestEvent as ScheduleEvent
       } else {
-        // 如果今天没有日程，获取未来最近的日程
         const futureEvents = schedules
           .filter((event: any) => new Date(event.time) > endOfDay)
           .sort((a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime())
@@ -505,220 +435,17 @@ const loadLatestSchedule = () => {
   }
 }
 
-// 格式化日期时间
 const formatScheduleTime = (date: Date) => {
   const today = new Date()
   const scheduleDate = new Date(date)
   
-  // 判断是否是今天
   if (scheduleDate.getDate() === today.getDate() && 
       scheduleDate.getMonth() === today.getMonth() && 
       scheduleDate.getFullYear() === today.getFullYear()) {
-    // 今天的日程只显示时间
     return `今天 ${dayjs(date).format('HH:mm')}`
   } else {
-    // 未来日程显示日期和时间
     return dayjs(date).format('MM/DD HH:mm')
   }
-}
-
-// 更新单独的菜单项
-const updateSingleMenuItems = (): void => {
-  singleMenuItems.value = []
-  
-  if (activeTopNav.value === '4') {
-    singleMenuItems.value = [
-      { id: '7', title: '市场数据', icon: 'PieChart' },
-      { id: '8', title: '气象数据', icon: 'Cloudy' }
-    ]
-    
-    // 从主菜单中移除
-    menuItems.value = menuItems.value.filter(item => !['7', '8'].includes(item.id))
-  }
-}
-
-// 当前激活的菜单项
-const activeMenu = ref('')
-const defaultOpeneds = ref(['1', '2', '3', '4', '5', '6', '9'])
-
-// 更新默认展开的菜单
-const updateDefaultOpeneds = (): void => {
-  const ids = menuItems.value.map(item => item.id)
-  defaultOpeneds.value = ids
-}
-
-// 处理侧边菜单点击
-const handleMenuClick = (index: string): void => {
-  activeMenu.value = index
-  
-  // 对于一级菜单，更新顶部导航
-  const topNavId = findTopNavForMenu(index)
-  if (topNavId && topNavId !== activeTopNav.value) {
-    // 不调用handleTopNavClick以避免循环，直接更新activeTopNav
-    activeTopNav.value = topNavId
-  }
-  
-  // 根据菜单ID导航到对应路由
-  const route = menuRouteMap[index]
-  if (route) {
-    addTab(index)
-    router.push(route)
-  } else if (index === '0') {
-    // 首页
-    router.push('/')
-  }
-}
-
-// 添加标签页
-const addTab = (menuId: string): void => {
-  const title = menuTitleMap[menuId]
-  const path = menuRouteMap[menuId]
-  
-  if (!title || !path) return
-  
-  // 检查标签是否已存在
-  const existingTab = tabsList.value.find(tab => tab.name === menuId)
-  if (!existingTab) {
-    tabsList.value.push({
-      title,
-      name: menuId,
-      path
-    })
-  }
-  
-  // 设置当前激活的标签
-  activeTabName.value = menuId
-}
-
-// 移除标签页
-const removeTab = (targetName: string): void => {
-  // 获取标签列表
-  const tabs = tabsList.value
-  let activeName = activeTabName.value
-  
-  // 如果关闭的是当前激活的标签
-  if (activeName === targetName) {
-    // 找到下一个要激活的标签
-    tabs.forEach((tab, index) => {
-      if (tab.name === targetName) {
-        const nextTab = tabs[index + 1] || tabs[index - 1]
-        if (nextTab) {
-          activeName = nextTab.name
-        }
-      }
-    })
-  }
-  
-  // 更新激活的标签
-  activeTabName.value = activeName
-  tabsList.value = tabs.filter(tab => tab.name !== targetName)
-  
-  // 如果还有标签，则导航到当前激活的标签
-  if (activeName && tabsList.value.length > 0) {
-    const activeTab = tabsList.value.find(tab => tab.name === activeName)
-    if (activeTab) {
-      router.push(activeTab.path)
-    }
-  } else {
-    // 如果没有标签了，则导航到首页
-    router.push('/')
-  }
-}
-
-// 点击标签页
-const clickTab = (tab: any): void => {
-  const targetTab = tabsList.value.find(item => item.name === tab.props.name)
-  if (targetTab) {
-    router.push(targetTab.path)
-  }
-}
-
-// 处理首页点击
-const goHome = (): void => {
-  activeMenu.value = '0'
-  activeTopNav.value = '1' // 默认选中"业务关系"顶部导航
-  
-  // 更新侧边栏菜单
-  menuItems.value = allMenuItems['1']
-  updateSingleMenuItems()
-  updateDefaultOpeneds()
-  
-  // 清除标签页列表中的激活状态
-  activeTabName.value = ''
-  
-  // 导航到首页
-  router.push('/')
-}
-
-// 处理退出登录
-const handleLogout = (): void => {
-  // 这里添加退出登录逻辑
-  alert('退出登录功能开发中')
-}
-
-// 侧边栏折叠切换
-const toggleCollapse = (): void => {
-  isCollapse.value = !isCollapse.value
-}
-
-// 监听路由变化，添加标签页并更新导航状态
-watch(() => route.path, (newPath) => {
-  // 找到当前路径对应的菜单ID
-  let currentMenuId = '';
-  
-  for (const [key, path] of Object.entries(menuRouteMap)) {
-    if (path === newPath) {
-      currentMenuId = key;
-      addTab(key);
-      
-      // 设置激活的菜单
-      activeMenu.value = key;
-      
-      // 找到对应的顶部导航并设置
-      const topNavId = findTopNavForMenu(key);
-      if (topNavId && topNavId !== activeTopNav.value) {
-        activeTopNav.value = topNavId;
-        menuItems.value = allMenuItems[topNavId];
-        updateSingleMenuItems();
-        updateDefaultOpeneds();
-      }
-      
-      break;
-    }
-  }
-  
-  // 如果是首页
-  if (newPath === '/' && !currentMenuId) {
-    activeMenu.value = '0';
-    if (activeTopNav.value !== '1') {
-      activeTopNav.value = '1';
-      menuItems.value = allMenuItems['1'];
-      updateSingleMenuItems();
-      updateDefaultOpeneds();
-    }
-  }
-}, { immediate: true })
-
-// 初始化
-onMounted(() => {
-  updateSingleMenuItems()
-  loadLatestSchedule()
-  
-  // 每分钟更新一次最新日程
-  setInterval(() => {
-    loadLatestSchedule()
-  }, 60000)
-})
-
-// 获取单独的菜单项（没有子菜单的二级菜单）
-const getSingleMenuItems = (topNavId: string): MenuItem[] => {
-  if (topNavId === '4') {
-    return [
-      { id: '7', title: '市场数据', icon: 'PieChart' },
-      { id: '8', title: '气象数据', icon: 'Cloudy' }
-    ]
-  }
-  return []
 }
 </script>
 
@@ -726,12 +453,10 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
   <el-container class="layout-container">
     <!-- 左侧菜单 -->
     <el-aside :width="isCollapse ? '64px' : '220px'" class="aside">
-      <!-- 系统标题 -->
       <div class="system-title" :class="{ 'collapsed-title': isCollapse }" @click="goHome">
         <span v-if="!isCollapse">九州能源售电系统</span>
         <span v-else>九州</span>
       </div>
-      
       <el-scrollbar class="menu-scrollbar">
         <el-menu
           :default-openeds="defaultOpeneds"
@@ -740,25 +465,22 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
           @select="handleMenuClick"
           :collapse="isCollapse"
         >
-          <!-- 有子菜单的项目 -->
-          <el-sub-menu v-for="menu in menuItems" :key="menu.id" :index="menu.id">
+          <el-sub-menu v-for="menu in sidebarPrimaryItems" :key="menu.id" :index="menu.id">
             <template #title>
               <el-icon><component :is="menu.icon" /></el-icon>
               <span>{{ menu.title }}</span>
             </template>
-            <el-menu-item 
-              v-for="subMenu in menu.children" 
-              :key="subMenu.id" 
+            <el-menu-item
+              v-for="subMenu in menu.children"
+              :key="subMenu.id"
               :index="subMenu.id"
             >
               {{ subMenu.title }}
             </el-menu-item>
           </el-sub-menu>
-          
-          <!-- 没有子菜单的项目 -->
-          <el-menu-item 
-            v-for="menu in singleMenuItems" 
-            :key="menu.id" 
+          <el-menu-item
+            v-for="menu in sidebarSingleItems"
+            :key="menu.id"
             :index="menu.id"
           >
             <el-icon><component :is="menu.icon" /></el-icon>
@@ -766,19 +488,14 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
           </el-menu-item>
         </el-menu>
       </el-scrollbar>
-      
-      <!-- 收缩按钮 -->
       <div class="collapse-btn" @click="toggleCollapse">
         <el-icon :size="20" v-if="!isCollapse"><Fold /></el-icon>
         <el-icon :size="20" v-else><Expand /></el-icon>
       </div>
     </el-aside>
-    
     <el-container>
-      <!-- 顶部标题栏 -->
       <el-header class="header">
         <div class="header-container">
-          <!-- 导航菜单下拉图标 -->
           <div class="left-header-section">
             <div class="menu-dropdown" tabindex="-1">
               <el-dropdown trigger="hover" @command="handleTopNavClick" placement="bottom-start" tabindex="-1">
@@ -788,142 +505,50 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
                 <template #dropdown>
                   <el-dropdown-menu class="full-menu-dropdown">
                     <div class="menu-container">
-                      <!-- 一级菜单 -->
-                      <div class="menu-column">
-                        <!-- 业务关系 -->
-                        <div class="top-menu-item" :class="{'active-menu': activeTopNav === '1'}" @click="handleTopNavClick('1')">
+                      <div class="menu-column" v-for="topNav in topNavItems" :key="topNav.id">
+                        <div
+                          class="top-menu-item"
+                          :class="{'active-menu': activeTopNav === topNav.id}"
+                          @click="handleTopNavClick(topNav.id)"
+                        >
                           <div class="menu-border"></div>
-                          <div class="menu-text">业务关系</div>
+                          <div class="menu-text">{{ topNav.title }}</div>
                         </div>
-                        
-                        <!-- 档案管理 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><Folder /></el-icon>
-                            档案管理
+                        <!-- 使用在 script setup 中定义的 getSidebarGroupsForTopNav -->
+                        <div
+                          class="secondary-menu-group"
+                          v-for="sidebarGroup in getSidebarGroupsForTopNav(topNav.id)" 
+                          :key="sidebarGroup.id"
+                        >
+                          <div class="folder-icon" v-if="sidebarGroup.icon || sidebarGroup.title">
+                            <el-icon v-if="sidebarGroup.icon"><component :is="sidebarGroup.icon" /></el-icon>
+                            {{ sidebarGroup.title }}
                           </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('1-1')">客户档案</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('1-2')">经纪人档案</div>
-                        </div>
-                      </div>
-                      
-                      <!-- 交易辅助 -->
-                      <div class="menu-column">
-                        <div class="top-menu-item" :class="{'active-menu': activeTopNav === '2'}" @click="handleTopNavClick('2')">
-                          <div class="menu-border"></div>
-                          <div class="menu-text">交易辅助</div>
-                        </div>
-                        
-                        <!-- 客户分析 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><DataAnalysis /></el-icon>
-                            客户分析
+                          <div
+                            class="third-menu-item"
+                            v-for="subMenuItem in sidebarGroup.children"
+                            :key="subMenuItem.id"
+                            @click="handleSubMenuClick(subMenuItem.id)"
+                          >
+                            {{ subMenuItem.title }}
                           </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('2-1')">客户电量管理</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('2-2')">电量偏差：预测vs实际</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('2-3')">电量变化：现在vs从前</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('2-4')">价格偏差：日前vs实时</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('2-5')">价格变化：现在vs从前</div>
                         </div>
-                        
-                        <!-- 中长期交易 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><Operation /></el-icon>
-                            中长期交易
-                          </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('3-1')">合约统计(按月)</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('3-2')">合约统计(按时)</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('3-3')">曲线分解</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('3-4')">批发交易复盘</div>
-                        </div>
-                        
-                        <!-- 现货交易 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><Money /></el-icon>
-                            现货交易
-                          </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('4-1')">日总电量预测</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('4-2')">分时电量预测</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('4-3')">日前博弈套利</div>
-                        </div>
-                      </div>
-                      
-                      <!-- 数据汇报 -->
-                      <div class="menu-column">
-                        <div class="top-menu-item" :class="{'active-menu': activeTopNav === '3'}" @click="handleTopNavClick('3')">
-                          <div class="menu-border"></div>
-                          <div class="menu-text">数据汇报</div>
-                        </div>
-                        
-                        <!-- 经营分析 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><TrendCharts /></el-icon>
-                            经营分析
-                          </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('5-1')">每日盈利、价格趋势</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('5-2')">月度核心指标</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('5-3')">月度成本构成与利润</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('5-4')">客户关联指标</div>
-                        </div>
-                      </div>
-                      
-                      <!-- 数据仓库 -->
-                      <div class="menu-column">
-                        <div class="top-menu-item" :class="{'active-menu': activeTopNav === '4'}" @click="handleTopNavClick('4')">
-                          <div class="menu-border"></div>
-                          <div class="menu-text">数据仓库</div>
-                        </div>
-                        
-                        <!-- 客户数据 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><User /></el-icon>
-                            客户数据
-                          </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('6-1')">客户购电合同条款</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('6-2')">客户增值服务合同条款</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('6-3')">客户电量数据</div>
-                        </div>
-                        
-                        <!-- 市场数据 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><PieChart /></el-icon>
-                            市场数据
-                          </div>
-                          <div class="third-menu-item" @click="handleMenuClick('7')">市场数据概览</div>
-                        </div>
-                        
-                        <!-- 气象数据 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><Cloudy /></el-icon>
-                            气象数据
-                          </div>
-                          <div class="third-menu-item" @click="handleMenuClick('8')">气象数据概览</div>
-                        </div>
-                      </div>
-                      
-                      <!-- 系统管理 -->
-                      <div class="menu-column">
-                        <div class="top-menu-item" :class="{'active-menu': activeTopNav === '5'}" @click="handleTopNavClick('5')">
-                          <div class="menu-border"></div>
-                          <div class="menu-text">系统管理</div>
-                        </div>
-                        
-                        <!-- 系统设置 -->
-                        <div class="secondary-menu-group">
-                          <div class="folder-icon">
-                            <el-icon><Setting /></el-icon>
-                            系统设置
-                          </div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('9-1')">系统日志</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('9-2')">权限管理</div>
-                          <div class="third-menu-item" @click="handleSubMenuClick('9-3')">安全提醒</div>
+                        <!-- 使用在 script setup 中定义的 getSingleSidebarItemsForTopNav -->
+                        <div
+                          class="secondary-menu-group"
+                          v-for="singleItem in getSingleSidebarItemsForTopNav(topNav.id)"
+                          :key="singleItem.id"
+                        >
+                           <div class="folder-icon" v-if="singleItem.icon || singleItem.title">
+                              <el-icon v-if="singleItem.icon"><component :is="singleItem.icon" /></el-icon>
+                               {{ singleItem.title }}
+                           </div>
+                           <div
+                            class="third-menu-item"
+                            @click="handleMenuClick(singleItem.id)"
+                           >
+                             {{ singleItem.title }}概览
+                           </div>
                         </div>
                       </div>
                     </div>
@@ -931,8 +556,6 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
                 </template>
               </el-dropdown>
             </div>
-            
-            <!-- 菜单搜索框 -->
             <div class="search-container">
               <el-autocomplete
                 v-model="searchText"
@@ -948,32 +571,27 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
                 <template #default="{ item }">
                   <div class="search-suggestion">
                     <span>{{ item.value }}</span>
-                    <span class="search-path">{{ item.path }}</span>
+                    <span class="search-path">{{ item.fullPathDescription }}</span>
                   </div>
                 </template>
               </el-autocomplete>
             </div>
           </div>
-          
           <div class="right-header-section">
-            <!-- 最新日程显示 -->
             <div v-if="latestSchedule" class="latest-schedule" @click="openAddSchedule">
               <span>{{ formatScheduleTime(latestSchedule.time) }} {{ latestSchedule.title }}</span>
             </div>
-            
-            <!-- 添加日程按钮 -->
             <div class="schedule-btn-wrapper">
-              <el-button 
-                type="primary" 
+              <el-button
+                type="primary"
                 circle
-                @click="openAddSchedule" 
+                @click="openAddSchedule"
                 class="add-schedule-btn"
                 title="添加日程"
               >
                 <el-icon :size="18"><Calendar /></el-icon>
               </el-button>
             </div>
-            
             <div class="user-info">
               <button class="logout-link" @click="handleLogout">
                 <el-icon><SwitchButton /></el-icon>
@@ -983,15 +601,12 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
           </div>
         </div>
       </el-header>
-      
-      <!-- 标签页和主内容区 -->
       <el-main class="main">
-        <!-- 标签页组件 -->
         <div class="tabs-container" v-if="tabsList.length > 0">
-          <el-tabs 
-            v-model="activeTabName" 
-            type="card" 
-            closable 
+          <el-tabs
+            v-model="activeTabName"
+            type="card"
+            closable
             @tab-remove="removeTab"
             @tab-click="clickTab"
           >
@@ -1003,9 +618,7 @@ const getSingleMenuItems = (topNavId: string): MenuItem[] => {
             >
             </el-tab-pane>
           </el-tabs>
-    </div>
-        
-        <!-- 内容区域 -->
+        </div>
         <div class="content-container">
           <router-view v-slot="{ Component }">
             <keep-alive>
